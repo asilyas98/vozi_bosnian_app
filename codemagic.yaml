@@ -1,5 +1,3 @@
-# Commit this file and the extracted project files at your GitHub repository root.
-# Workflows are started manually from Codemagic; no store upload is automatic.
 workflows:
   vozi-appstore-ipa:
     name: Vozi App Store IPA - build only
@@ -34,6 +32,12 @@ workflows:
     artifacts:
       - ios/App/build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true
 
   vozi-iphone-ipa:
     name: Vozi iPhone IPA - registered devices
