@@ -1,10 +1,10 @@
 workflows:
   vozi-appstore-ipa:
-    name: Vozi App Store IPA - build only
+    name: Vozi App Store IPA - upload and submit
     instance_type: mac_mini_m2
     max_build_duration: 45
     integrations:
-      app_store_connect: Codemagic
+      app_store_connect: "Codemagic"
     environment:
       node: "24"
       xcode: latest
@@ -25,7 +25,7 @@ workflows:
           agvtool new-version -all "$((100 + ${PROJECT_BUILD_NUMBER:?Missing Codemagic project build number}))"
       - name: Apply App Store signing profiles
         script: xcode-project use-profiles
-      - name: Build IPA for later TestFlight upload
+      - name: Build signed App Store IPA
         script: |
           set -euo pipefail
           cd ios/App
@@ -36,7 +36,9 @@ workflows:
       - /tmp/xcodebuild_logs/*.log
     publishing:
       app_store_connect:
-        submit_to_testflight: true
+        auth: integration
+        submit_to_app_store: true
+        release_type: MANUAL
 
   vozi-iphone-ipa:
     name: Vozi iPhone IPA - registered devices
