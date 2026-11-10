@@ -1,0 +1,6 @@
+{
+  "appId": "com.simpleai.vozi",
+  "appName": "Vozi",
+  "webDir": "www",
+  "ios": {"contentInset": "never", "backgroundColor": "#F4F6FF", "preferredContentMode": "mobile"}
+}

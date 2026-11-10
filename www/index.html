@@ -1,0 +1,2406 @@
+<!doctype html><html lang="bs"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+</style>
+<link rel="stylesheet" href="vendor/leaflet.css"><title>Vozi — Ride & Trip Tracking</title><meta name="description" content="Vozi ride demo with street trip tracking and USD, Bosnian marks and euro currencies."><meta name="theme-color" content="#1A56F0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap">
+
+<style>
+/* ─── TOKENS ─── */
+:root{
+  --bg:#F4F6FF;--surface:#FFFFFF;--surface-2:#EBF0FF;--surface-3:#DDE4F8;
+  --primary:#1A56F0;--primary-d:#1344CC;--primary-l:#E8EFFE;
+  --accent:#FFBE00;--accent-d:#E6A800;--accent-l:#FFF8DC;
+  --text:#090F28;--text-2:#46527A;--muted:#8B97BB;
+  --border:#D9E0F5;--online:#00C853;--danger:#EF3B3B;
+  --shadow-s:0 2px 8px rgba(26,86,240,.06);
+  --shadow:0 4px 24px rgba(26,86,240,.10);
+  --shadow-l:0 12px 44px rgba(26,86,240,.15);
+  --r-s:12px;--r:20px;--r-l:28px;
+}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#080E1F;--surface:#0E1830;--surface-2:#152040;--surface-3:#1C2B52;
+    --primary:#4F7EF8;--primary-d:#6B93FF;--primary-l:#0F1D44;
+    --accent:#FFBE00;--accent-d:#FFD03A;--accent-l:#1D1600;
+    --text:#ECF0FB;--text-2:#8898C2;--muted:#48587E;--border:#1B2845;
+    --online:#00E676;--danger:#FF5252;
+    --shadow-s:0 2px 8px rgba(0,0,0,.35);--shadow:0 4px 24px rgba(0,0,0,.4);--shadow-l:0 12px 44px rgba(0,0,0,.55);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#080E1F;--surface:#0E1830;--surface-2:#152040;--surface-3:#1C2B52;
+  --primary:#4F7EF8;--primary-d:#6B93FF;--primary-l:#0F1D44;
+  --accent:#FFBE00;--accent-d:#FFD03A;--accent-l:#1D1600;
+  --text:#ECF0FB;--text-2:#8898C2;--muted:#48587E;--border:#1B2845;
+  --online:#00E676;--danger:#FF5252;
+  --shadow-s:0 2px 8px rgba(0,0,0,.35);--shadow:0 4px 24px rgba(0,0,0,.4);--shadow-l:0 12px 44px rgba(0,0,0,.55);
+}
+/* ─── BASE ─── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow:hidden;}
+button{font-family:inherit;cursor:pointer;}
+a{color:var(--primary);text-decoration:none;font-weight:600;}
+/* ─── SHELL ─── */
+#app{height:100%;width:100%;position:relative;overflow:hidden;}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg);transition:opacity .3s ease,transform .3s ease;will-change:opacity,transform;overflow-y:auto;overflow-x:hidden;}
+.screen.active{opacity:1;transform:none;z-index:2;pointer-events:auto;}
+.screen.out-left{opacity:0;transform:translateX(-28px);z-index:1;pointer-events:none;}
+.screen.out-right{opacity:0;transform:translateX(28px);z-index:1;pointer-events:none;}
+
+/* ── AUTH ── */
+#s-auth{overflow-y:auto;}
+.auth-hero{
+  background:linear-gradient(150deg,#0829A8 0%,#1A56F0 60%,#3572FF 100%);
+  padding:56px 28px 46px;display:flex;flex-direction:column;align-items:center;text-align:center;
+  position:relative;overflow:hidden;flex-shrink:0;
+}
+.auth-hero::before{content:'';position:absolute;top:-70px;right:-70px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(255,190,0,.28) 0%,transparent 70%);}
+.auth-hero::after{content:'';position:absolute;bottom:-50px;left:-50px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.05);}
+.brand-mark{font-family:'Outfit',sans-serif;font-weight:900;font-size:64px;color:#fff;letter-spacing:-4px;line-height:1;position:relative;z-index:1;}
+.brand-mark em{font-style:normal;color:#FFBE00;}
+.brand-sub{font-size:10px;font-weight:700;letter-spacing:5px;text-transform:uppercase;color:rgba(255,255,255,.48);margin-top:8px;position:relative;z-index:1;}
+.auth-tagline{font-size:15px;color:rgba(255,255,255,.72);margin-top:20px;line-height:1.55;position:relative;z-index:1;}
+
+.auth-body{padding:26px 20px 40px;flex:1;}
+.auth-topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;}
+.lang-sw{display:flex;background:var(--surface-2);border-radius:20px;padding:3px;gap:2px;}
+.lang-btn{padding:5px 12px;border-radius:16px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--muted);letter-spacing:.4px;transition:all .15s;}
+.lang-btn.on{background:var(--surface);color:var(--text);box-shadow:var(--shadow-s);}
+.theme-btn{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.theme-btn:hover{background:var(--surface-2);}
+
+.auth-tabs{display:flex;background:var(--surface-2);border-radius:var(--r);padding:4px;gap:4px;margin-bottom:24px;}
+.auth-tab{flex:1;padding:11px;text-align:center;font-weight:700;font-size:14px;border-radius:16px;cursor:pointer;border:none;background:none;color:var(--muted);transition:all .2s;}
+.auth-tab.on{background:var(--surface);color:var(--text);box-shadow:var(--shadow-s);}
+
+.aform{display:flex;flex-direction:column;gap:14px;}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+.fg label{display:block;font-size:12px;font-weight:700;color:var(--text-2);letter-spacing:.3px;margin-bottom:5px;}
+.fg input{width:100%;padding:14px 16px;border-radius:var(--r-s);border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:15px;outline:none;transition:border-color .2s,box-shadow .2s;}
+.fg input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-l);}
+.fg input::placeholder{color:var(--muted);}
+.pw-wrap{position:relative;}
+.pw-wrap input{padding-right:48px;}
+.pw-eye{position:absolute;right:14px;top:50%;transform:translateY(-50%);border:none;background:none;color:var(--muted);font-size:17px;cursor:pointer;padding:4px;line-height:1;}
+.pw-eye:hover{color:var(--text-2);}
+
+.forgot{text-align:right;font-size:12px;color:var(--primary);cursor:pointer;font-weight:600;margin-top:-4px;}
+.role-pick{display:flex;gap:10px;}
+.rcard{flex:1;padding:16px 10px;border-radius:var(--r-s);border:2px solid var(--border);background:var(--surface);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:all .18s;color:var(--text-2);}
+.rcard.on{border-color:var(--primary);background:var(--primary-l);color:var(--text);}
+.rcard .ri{font-size:24px;}.rcard .rl{font-size:13px;font-weight:700;}.rcard .rd{font-size:11px;color:var(--muted);text-align:center;line-height:1.3;}
+
+.tos-row{display:flex;align-items:flex-start;gap:10px;}
+.tos-box{width:20px;height:20px;min-width:20px;border-radius:6px;border:2px solid var(--border);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;margin-top:1px;}
+.tos-box.on{background:var(--primary);border-color:var(--primary);}
+.tos-box.on::after{content:'✓';font-size:11px;color:#fff;font-weight:800;}
+.tos-txt{font-size:12px;color:var(--text-2);line-height:1.55;}
+.tos-txt a{color:var(--primary);}
+
+.btn-main{width:100%;padding:16px;background:var(--primary);color:#fff;font-size:15px;font-weight:700;border:none;border-radius:var(--r-s);transition:background .2s,transform .12s;margin-top:4px;}
+.btn-main:hover{background:var(--primary-d);}.btn-main:active{transform:scale(.98);}
+
+.auth-divider{display:flex;align-items:center;gap:12px;margin:6px 0;}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.auth-divider span{font-size:12px;color:var(--muted);font-weight:600;}
+.btn-social{width:100%;padding:13px;background:var(--surface);border:1.5px solid var(--border);color:var(--text);font-size:14px;font-weight:600;border-radius:var(--r-s);display:flex;align-items:center;justify-content:center;gap:10px;transition:background .15s;}
+.btn-social:hover{background:var(--surface-2);}
+.auth-note{text-align:center;font-size:13px;color:var(--text-2);margin-top:14px;}
+
+/* ── 2FA ── */
+#s-2fa{overflow-y:auto;}
+.tfa-body{flex:1;padding:36px 24px 48px;display:flex;flex-direction:column;align-items:center;}
+.tfa-back{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--text-2);cursor:pointer;align-self:flex-start;margin-bottom:32px;border:none;background:none;padding:0;}
+.tfa-back:hover{color:var(--text);}
+.tfa-icon{width:76px;height:76px;border-radius:50%;background:var(--primary-l);display:flex;align-items:center;justify-content:center;font-size:34px;margin-bottom:24px;}
+.tfa-title{font-family:'Outfit',sans-serif;font-size:28px;font-weight:900;color:var(--text);text-align:center;margin-bottom:10px;text-wrap:balance;}
+.tfa-sub{font-size:14px;color:var(--text-2);text-align:center;line-height:1.6;margin-bottom:32px;}
+.tfa-sub strong{color:var(--text);}
+.otp-row{display:flex;gap:10px;margin-bottom:28px;}
+.otp-box{width:52px;height:62px;border-radius:var(--r-s);border:2px solid var(--border);background:var(--surface);text-align:center;font-family:'Outfit',sans-serif;font-size:28px;font-weight:900;color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s;}
+.otp-box:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-l);}
+.tfa-hint{font-size:13px;color:var(--muted);text-align:center;margin-bottom:28px;}
+.tfa-hint a{color:var(--primary);}
+.tfa-divider{width:100%;height:1px;background:var(--border);margin-bottom:20px;}
+.tfa-alt{font-size:13px;color:var(--text-2);text-align:center;}
+.tfa-alt button{border:none;background:none;color:var(--primary);font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;}
+
+/* ── SHARED HDR ── */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--surface);border-bottom:1px solid var(--border);box-shadow:var(--shadow-s);flex-shrink:0;z-index:10;}
+.hdr-brand{font-family:'Outfit',sans-serif;font-weight:800;font-size:22px;color:var(--primary);letter-spacing:-1px;}
+.hdr-brand em{font-style:normal;color:var(--accent);}
+.hdr-right{display:flex;align-items:center;gap:10px;}
+.av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;cursor:pointer;flex-shrink:0;transition:transform .15s,box-shadow .15s;}
+.av:hover{transform:scale(1.08);box-shadow:0 0 0 3px rgba(255,190,0,.4);}
+.icon-btn{width:36px;height:36px;border-radius:50%;background:var(--surface-2);border:none;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text-2);transition:background .15s;}
+.icon-btn:hover{background:var(--surface-3);}
+
+/* ── RIDER ── */
+#s-rider{overflow:hidden;}
+.map-wrap{flex:1;position:relative;overflow:hidden;min-height:0;}
+#map-canvas{width:100%;height:100%;display:block;}
+.map-float-search{position:absolute;top:14px;left:14px;right:14px;z-index:5;}
+.map-sbar{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow-l);padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:box-shadow .15s;}
+.map-sbar:hover{box-shadow:var(--shadow-l),0 0 0 2px var(--primary-l);}
+.map-sbar-left{width:38px;height:38px;border-radius:10px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.map-sbar-text{flex:1;}
+.map-sbar-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;}
+.map-sbar-ph{font-size:15px;font-weight:600;color:var(--text-2);}
+.map-sbar-arrow{font-size:20px;color:var(--muted);}
+.map-btns{position:absolute;right:14px;bottom:14px;display:flex;flex-direction:column;gap:9px;z-index:4;}
+.map-icon-btn{width:44px;height:44px;border-radius:50%;background:var(--surface);box-shadow:var(--shadow);border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:transform .15s;}
+.map-icon-btn:active{transform:scale(.9);}
+
+/* Drawer (search state) */
+.drawer{background:var(--surface);border-radius:var(--r-l) var(--r-l) 0 0;box-shadow:0 -4px 30px rgba(26,86,240,.09);padding:8px 20px 28px;flex-shrink:0;max-height:60%;overflow-y:auto;}
+.drawer-grip{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px;}
+.drawer-title{font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:var(--text);margin-bottom:16px;}
+.sbar{display:flex;align-items:stretch;gap:14px;background:var(--surface-2);border-radius:var(--r-s);padding:15px;cursor:pointer;transition:background .14s;}
+.sbar:hover{background:var(--surface-3);}
+.sbar-dots{display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0;padding-top:2px;}
+.dot-o{width:10px;height:10px;border-radius:50%;background:var(--primary);flex-shrink:0;}
+.dot-ln{width:2px;flex:1;background:var(--border);}
+.dot-d{width:10px;height:10px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+.sbar-fields{flex:1;display:flex;flex-direction:column;gap:8px;}
+.sbar-f{display:flex;flex-direction:column;gap:2px;}
+.sbar-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;}
+.sbar-val{font-size:14px;font-weight:600;color:var(--text);}.sbar-val.ph{color:var(--muted);}
+.sbar-sep{height:1px;background:var(--border);}
+.sugg-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin:18px 0 10px;}
+.sugg{display:flex;align-items:center;gap:13px;padding:12px 8px;border-radius:var(--r-s);cursor:pointer;transition:background .14s;}
+.sugg:hover{background:var(--surface-2);}
+.sugg-ic{width:42px;height:42px;border-radius:12px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.sugg-info{flex:1;}
+.sugg-name{font-weight:700;font-size:14px;color:var(--text);}
+.sugg-addr{font-size:12px;color:var(--text-2);margin-top:2px;}
+.sugg-km{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;font-weight:600;}
+
+/* ── RIDE TYPE SCREEN ── */
+#s-ridetype{overflow:hidden;}
+.rt-map{height:190px;position:relative;flex-shrink:0;overflow:hidden;}
+#rt-canvas{width:100%;height:100%;display:block;}
+.rt-sheet{flex:1;background:var(--surface);border-radius:var(--r-l) var(--r-l) 0 0;box-shadow:0 -4px 30px rgba(26,86,240,.09);padding:8px 20px 0;overflow-y:auto;position:relative;z-index:2;margin-top:-24px;}
+.rt-back-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.back-btn{width:36px;height:36px;border-radius:50%;background:var(--surface-2);border:none;font-size:16px;display:flex;align-items:center;justify-content:center;color:var(--text);transition:background .15s;flex-shrink:0;}
+.back-btn:hover{background:var(--surface-3);}
+.rt-title{font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:var(--text);}
+.rt-route{background:var(--surface-2);border-radius:var(--r-s);padding:12px 14px;font-size:13px;color:var(--text-2);margin-bottom:18px;display:flex;align-items:center;gap:8px;}
+.rt-route strong{color:var(--text);}
+.ride-types{display:flex;flex-direction:column;border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:130px;}
+.rt-card{padding:16px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:background .15s;border-bottom:1px solid var(--border);position:relative;}
+.rt-card:last-child{border-bottom:none;}
+.rt-card.sel{background:var(--primary-l);}
+.rt-card-icon{font-size:30px;width:48px;text-align:center;flex-shrink:0;}
+.rt-card-info{flex:1;min-width:0;}
+.rt-name{font-weight:800;font-size:15px;color:var(--text);display:flex;align-items:center;gap:7px;}
+.rt-badge{background:var(--accent-l);color:var(--accent-d);font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;}
+.rt-desc{font-size:12px;color:var(--text-2);margin-top:2px;}
+.rt-eta{font-size:12px;color:var(--muted);margin-top:2px;}
+.rt-price{text-align:right;flex-shrink:0;}
+.rt-price-val{font-family:'Outfit',sans-serif;font-size:20px;font-weight:900;color:var(--text);font-variant-numeric:tabular-nums;}
+.rt-price-unit{font-size:11px;color:var(--muted);}
+.rt-sel-dot{position:absolute;right:16px;top:50%;transform:translateY(-50%) scale(0);width:22px;height:22px;border-radius:50%;background:var(--primary);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;transition:transform .2s;}
+.rt-card.sel .rt-sel-dot{transform:translateY(-50%) scale(1);}
+.rt-card.sel .rt-price{margin-right:32px;}
+.rt-bottom{position:absolute;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:14px 20px calc(14px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px;}
+.pay-mini{display:flex;align-items:center;gap:10px;background:var(--surface-2);border-radius:var(--r-s);padding:11px 14px;cursor:pointer;}
+.pay-mini-ic{font-size:18px;}
+.pay-mini-name{font-size:13px;font-weight:700;color:var(--text);flex:1;}
+.pay-mini-chg{font-size:12px;color:var(--primary);font-weight:700;}
+.btn-confirm{width:100%;padding:16px;background:var(--primary);color:#fff;font-size:15px;font-weight:700;border:none;border-radius:var(--r-s);transition:background .2s,transform .12s;display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn-confirm:hover{background:var(--primary-d);}.btn-confirm:active{transform:scale(.98);}
+
+/* ── DRIVER ── */
+#s-driver{overflow:hidden;}
+.drvr-body{flex:1;overflow-y:auto;padding:18px 16px 40px;display:flex;flex-direction:column;gap:14px;}
+.online-card{background:linear-gradient(140deg,#0829A8 0%,#1A56F0 100%);border-radius:var(--r);padding:20px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow-l);position:relative;overflow:hidden;}
+.online-card::before{content:'';position:absolute;top:-40px;right:-40px;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.07);}
+.oc-lbl{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:5px;}
+.oc-val{font-family:'Outfit',sans-serif;font-size:26px;font-weight:900;color:#fff;line-height:1;}
+.oc-val.go{color:#4DFF91;}
+.tog{width:58px;height:31px;border-radius:16px;background:rgba(255,255,255,.2);cursor:pointer;position:relative;transition:background .28s;flex-shrink:0;border:2px solid rgba(255,255,255,.25);}
+.tog.on{background:var(--online);border-color:var(--online);}
+.tog-k{width:23px;height:23px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:transform .28s;box-shadow:0 2px 6px rgba(0,0,0,.3);}
+.tog.on .tog-k{transform:translateX(27px);}
+
+.earn-card{background:var(--surface);border-radius:var(--r);padding:20px;box-shadow:var(--shadow-s);}
+.earn-top{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px;}
+.earn-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.earn-val{font-family:'Outfit',sans-serif;font-size:38px;font-weight:900;color:var(--text);font-variant-numeric:tabular-nums;line-height:1;}
+.earn-val sub{font-size:14px;font-weight:700;color:var(--text-2);vertical-align:baseline;}
+.earn-goal{font-size:12px;color:var(--text-2);margin-top:4px;}
+.earn-goal b{color:var(--online);}
+.earn-pct{font-family:'Outfit',sans-serif;font-size:22px;font-weight:900;color:var(--primary);}
+.progress-bar{height:7px;background:var(--surface-2);border-radius:4px;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:4px;transition:width .7s cubic-bezier(.22,.68,0,1.1);}
+.stat-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:14px;}
+.stat-card{background:var(--surface-2);border-radius:var(--r-s);padding:14px 10px;text-align:center;}
+.sv{font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;}
+.sv sub{font-size:12px;font-weight:600;color:var(--text-2);vertical-align:baseline;}
+.sl{font-size:11px;color:var(--muted);margin-top:4px;font-weight:600;}
+
+.req-card{background:var(--surface);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow-l);border:1.5px solid var(--primary-l);}
+.req-head{background:linear-gradient(135deg,#0829A8,#1A56F0);padding:13px 16px;display:flex;align-items:center;justify-content:space-between;}
+.req-badge{display:flex;align-items:center;gap:7px;color:#fff;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;}
+.req-blink{width:7px;height:7px;border-radius:50%;background:#4DFF91;animation:blink 1s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.req-timer{font-family:'Outfit',sans-serif;font-size:18px;font-weight:900;color:var(--accent);font-variant-numeric:tabular-nums;}
+.req-body{padding:16px;}
+.req-rider{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+.req-av{width:48px;height:48px;border-radius:50%;background:var(--primary-l);display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;color:var(--primary);flex-shrink:0;}
+.req-name{font-family:'Outfit',sans-serif;font-size:17px;font-weight:800;color:var(--text);}
+.req-stars{font-size:13px;color:var(--text-2);margin-top:2px;}
+.req-route{background:var(--surface-2);border-radius:var(--r-s);padding:13px 14px;margin-bottom:13px;display:flex;flex-direction:column;gap:11px;}
+.rr-item{display:flex;align-items:flex-start;gap:11px;}
+.rr-dot{width:10px;height:10px;border-radius:50%;margin-top:4px;flex-shrink:0;}
+.rr-dot.o{background:var(--primary);}.rr-dot.d{background:var(--accent);}
+.rr-addr{font-size:14px;font-weight:600;color:var(--text);line-height:1.3;}
+.rr-sub{font-size:12px;color:var(--text-2);margin-top:2px;}
+.req-chips{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.req-chip{background:var(--surface-2);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;color:var(--text-2);}
+.req-chip strong{color:var(--text);}
+.req-actions{display:grid;grid-template-columns:1fr 2fr;gap:10px;}
+.btn-dec{padding:13px;background:var(--surface-2);border:1.5px solid var(--border);color:var(--text-2);border-radius:var(--r-s);font-size:14px;font-weight:700;transition:all .15s;}
+.btn-dec:hover{background:rgba(239,59,59,.1);border-color:var(--danger);color:var(--danger);}
+.btn-acc{padding:13px;background:var(--primary);color:#fff;border:none;border-radius:var(--r-s);font-size:14px;font-weight:700;transition:background .15s,transform .12s;display:flex;align-items:center;justify-content:center;gap:7px;}
+.btn-acc:hover{background:var(--primary-d);}.btn-acc:active{transform:scale(.97);}
+.off-card{background:var(--surface);border-radius:var(--r);padding:30px 24px;text-align:center;box-shadow:var(--shadow-s);}
+.off-ico{font-size:48px;margin-bottom:14px;}
+.off-title{font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;color:var(--text);margin-bottom:6px;}
+.off-sub{font-size:13px;color:var(--text-2);line-height:1.55;}
+.sec-ttl{font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;color:var(--text);margin-bottom:10px;}
+.trips{background:var(--surface);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow-s);}
+.trip{display:flex;align-items:center;gap:13px;padding:13px 16px;border-bottom:1px solid var(--border);}
+.trip:last-child{border-bottom:none;}
+.trip-ic{width:40px;height:40px;border-radius:10px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.trip-dest{font-weight:700;font-size:14px;color:var(--text);}
+.trip-t{font-size:12px;color:var(--text-2);margin-top:2px;}
+.trip-earn{font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;margin-left:auto;flex-shrink:0;}
+
+/* ── PROFILE SHEET ── */
+.prof-overlay{position:fixed;inset:0;background:rgba(0,0,0,0);z-index:9000;pointer-events:none;transition:background .3s;}
+.prof-overlay.open{background:rgba(0,0,0,.5);pointer-events:auto;}
+.prof-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);width:100%;max-width:430px;background:var(--surface);border-radius:var(--r-l) var(--r-l) 0 0;z-index:9001;pointer-events:auto;transition:transform .38s cubic-bezier(.22,.68,0,1.1);padding:0 0 calc(env(safe-area-inset-bottom,0px)+32px);max-height:92%;overflow-y:auto;}
+.prof-sheet.open{transform:translateX(-50%) translateY(0);}
+.prof-grip{width:40px;height:4px;background:var(--border);border-radius:2px;margin:14px auto 0;}
+.prof-hdr{padding:20px 22px 0;display:flex;align-items:center;justify-content:space-between;}
+.prof-hdr-ttl{font-family:'Outfit',sans-serif;font-size:18px;font-weight:800;color:var(--text);}
+.prof-close{width:34px;height:34px;border-radius:50%;background:var(--surface-2);border:none;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;color:var(--text-2);transition:background .15s;}
+.prof-close:hover{background:var(--surface-3);}
+.prof-av-wrap{display:flex;justify-content:center;padding:20px 0 12px;}
+.prof-av-big{width:84px;height:84px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-size:30px;font-weight:900;color:#fff;position:relative;}
+.prof-av-big::after{content:'✓';position:absolute;bottom:0;right:0;width:24px;height:24px;border-radius:50%;background:var(--online);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2.5px solid var(--surface);}
+.prof-name{font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:var(--text);text-align:center;margin-bottom:5px;}
+.prof-role{display:inline-flex;align-items:center;gap:6px;background:var(--primary-l);color:var(--primary);font-size:12px;font-weight:700;padding:5px 14px;border-radius:20px;margin-bottom:20px;}
+.prof-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:0 22px;margin-bottom:20px;}
+.prof-stat{background:var(--surface-2);border-radius:var(--r-s);padding:12px 8px;text-align:center;}
+.ps-v{font-family:'Outfit',sans-serif;font-size:19px;font-weight:800;color:var(--text);}
+.ps-l{font-size:11px;color:var(--muted);margin-top:3px;font-weight:600;}
+.prof-info{padding:0 22px;margin-bottom:20px;}
+.prof-row{display:flex;align-items:center;gap:13px;padding:13px 0;border-bottom:1px solid var(--border);}
+.prof-row:last-child{border-bottom:none;}
+.prof-row-ic{width:38px;height:38px;border-radius:10px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.prof-row-lbl{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:2px;}
+.prof-row-val{font-size:14px;font-weight:600;color:var(--text);}
+.prof-menu{padding:0 22px;display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+.pmi{display:flex;align-items:center;gap:13px;padding:14px;background:var(--surface-2);border-radius:var(--r-s);cursor:pointer;border:none;width:100%;text-align:left;transition:background .15s;}
+.pmi:hover{background:var(--surface-3);}
+.pmi-ic{width:38px;height:38px;border-radius:10px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.pmi-lbl{font-size:14px;font-weight:600;color:var(--text);flex:1;}
+.pmi-arr{color:var(--muted);font-size:18px;}
+.prof-foot{padding:0 22px;}
+.btn-logout{width:100%;padding:14px;background:rgba(239,59,59,.08);border:1.5px solid rgba(239,59,59,.18);border-radius:var(--r-s);font-size:14px;font-weight:700;color:var(--danger);transition:background .15s;}
+.btn-logout:hover{background:rgba(239,59,59,.14);}
+
+/* ── PAYMENT SHEET ── */
+.pay-overlay{position:fixed;inset:0;background:rgba(0,0,0,0);z-index:9002;pointer-events:none;transition:background .3s;}
+.pay-overlay.open{background:rgba(0,0,0,.5);pointer-events:auto;}
+.pay-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);width:100%;max-width:430px;background:var(--surface);border-radius:var(--r-l) var(--r-l) 0 0;z-index:9003;pointer-events:auto;transition:transform .38s cubic-bezier(.22,.68,0,1.1);padding:0 22px calc(22px + env(safe-area-inset-bottom,0px));max-height:82%;overflow-y:auto;}
+.pay-sheet.open{transform:translateX(-50%) translateY(0);}
+.pay-sheet-ttl{font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:var(--text);margin:22px 0 18px;}
+.pay-opt{display:flex;align-items:center;gap:13px;padding:14px;border-radius:var(--r-s);cursor:pointer;border:1.5px solid var(--border);margin-bottom:10px;transition:all .15s;}
+.pay-opt.sel{border-color:var(--primary);background:var(--primary-l);}
+.pay-opt-ic{width:44px;height:44px;border-radius:12px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.pay-opt-name{font-size:15px;font-weight:700;color:var(--text);}
+.pay-opt-desc{font-size:12px;color:var(--text-2);margin-top:2px;}
+.pay-opt-chk{margin-left:auto;width:22px;height:22px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;opacity:0;transform:scale(0);transition:all .2s;flex-shrink:0;}
+.pay-opt.sel .pay-opt-chk{opacity:1;transform:scale(1);}
+.pay-policy{margin-top:18px;padding:14px;background:var(--surface-2);border-radius:var(--r-s);}
+.pay-policy-ttl{font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:8px;display:flex;align-items:center;gap:7px;}
+.pay-policy-txt{font-size:12px;color:var(--muted);line-height:1.65;}
+.pay-policy-link{display:inline-block;margin-top:8px;font-size:12px;color:var(--primary);font-weight:600;cursor:pointer;}
+
+/* ── MODAL (ToS / Policy) ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0);z-index:9004;pointer-events:none;transition:background .3s;display:flex;align-items:flex-end;justify-content:center;}
+.modal-overlay.open{background:rgba(0,0,0,.55);pointer-events:auto;}
+.modal{width:100%;max-width:430px;background:var(--surface);border-radius:var(--r-l) var(--r-l) 0 0;padding:28px 22px calc(28px + env(safe-area-inset-bottom,0px));transform:translateY(100%);transition:transform .38s cubic-bezier(.22,.68,0,1.1);max-height:85vh;overflow-y:auto;}
+.modal-overlay.open .modal{transform:translateY(0);}
+.modal-ttl{font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;color:var(--text);margin-bottom:18px;text-wrap:balance;}
+.modal-body{font-size:13px;color:var(--text-2);line-height:1.7;}
+.modal-body h3{font-size:14px;font-weight:700;color:var(--text);margin:16px 0 6px;}
+.modal-body h3:first-child{margin-top:0;}
+.modal-body p{margin-bottom:10px;}
+.modal-close{width:100%;margin-top:22px;padding:15px;background:var(--primary);color:#fff;border:none;border-radius:var(--r-s);font-size:15px;font-weight:700;}
+
+/* ── MISC ── */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:#0C1228;color:#fff;padding:12px 22px;border-radius:28px;font-size:14px;font-weight:600;box-shadow:var(--shadow-l);z-index:9999;transition:transform .3s ease;white-space:nowrap;max-width:calc(100vw - 40px);text-overflow:ellipsis;overflow:hidden;}
+[data-theme="dark"] .toast{background:#EDF0FB;color:#090F28;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+@keyframes slideUp{from{transform:translateY(18px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
+/* ── TRACKING SCREEN ── */
+#s-tracking{overflow:hidden;flex-direction:column;}
+.trk-map{flex:1;position:relative;min-height:0;overflow:hidden;}
+#trk-canvas{width:100%;height:100%;display:block;}
+.trk-spinner-wrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:rgba(0,0,0,.18);}
+.trk-spinner{width:52px;height:52px;border-radius:50%;border:4px solid var(--primary);border-top-color:transparent;animation:spin .75s linear infinite;}
+.trk-spinner-lbl{font-size:13px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.5);}
+.trk-sheet{background:var(--surface);border-radius:var(--r-l) var(--r-l) 0 0;padding:20px 22px calc(22px + env(safe-area-inset-bottom,0px));box-shadow:var(--shadow-l);}
+.trk-status-row{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.trk-dot{width:10px;height:10px;border-radius:50%;background:var(--online);flex-shrink:0;animation:pulse-dot 1.6s ease infinite;}
+.trk-dot.found{animation:none;background:var(--online);}
+.trk-status-lbl{font-family:'Outfit',sans-serif;font-size:19px;font-weight:800;color:var(--text);}
+.trk-status-sub{font-size:12px;color:var(--text-2);margin-top:2px;}
+.trk-driver-card{display:flex;align-items:center;gap:14px;padding:14px;background:var(--surface-2);border-radius:var(--r-s);margin-bottom:14px;}
+.trk-drv-av{width:52px;height:52px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-size:19px;font-weight:900;color:#fff;flex-shrink:0;}
+.trk-drv-info{flex:1;min-width:0;}
+.trk-drv-name{font-size:15px;font-weight:700;color:var(--text);}
+.trk-drv-car{font-size:12px;color:var(--text-2);margin-top:2px;}
+.trk-eta-box{text-align:right;flex-shrink:0;}
+.trk-eta-val{font-family:'Outfit',sans-serif;font-size:26px;font-weight:900;color:var(--primary);font-variant-numeric:tabular-nums;}
+.trk-eta-lbl{font-size:11px;color:var(--muted);font-weight:700;margin-top:-2px;}
+.btn-cancel-trip{width:100%;padding:15px;background:rgba(239,59,59,.08);border:1.5px solid rgba(239,59,59,.22);border-radius:var(--r-s);font-size:15px;font-weight:700;color:var(--danger);cursor:pointer;transition:background .15s;font-family:inherit;}
+.btn-cancel-trip:hover{background:rgba(239,59,59,.16);}
+@media(min-width:768px){#s-tracking{flex-direction:row;}.trk-sheet{width:380px;border-radius:var(--r-l);margin:20px;height:fit-content;align-self:flex-end;}}
+.slide-up{animation:slideUp .36s cubic-bezier(.22,.68,0,1.2) both;}
+/* ── MESSAGE SHEET ── */
+.msg-overlay{position:fixed;inset:0;background:rgba(0,0,0,0);z-index:9005;pointer-events:none;transition:background .3s;}
+.msg-overlay.open{background:rgba(0,0,0,.55);pointer-events:auto;}
+.msg-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);width:100%;max-width:500px;background:var(--surface);border-radius:var(--r-l) var(--r-l) 0 0;z-index:9006;pointer-events:auto;transition:transform .38s cubic-bezier(.22,.68,0,1.1);padding:0 0 calc(16px + env(safe-area-inset-bottom,0px));max-height:88%;}
+.msg-sheet.open{transform:translateX(-50%) translateY(0);}
+.msg-hdr{display:flex;align-items:center;gap:12px;padding:18px 18px 14px;border-bottom:1px solid var(--border);}
+.msg-drv-av{width:42px;height:42px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-size:15px;font-weight:900;color:#fff;flex-shrink:0;}
+.msg-drv-nm{font-size:15px;font-weight:700;color:var(--text);}
+.msg-drv-sub{font-size:11px;color:var(--text-2);margin-top:1px;}
+.msg-chat{padding:14px 18px;min-height:120px;max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;}
+.msg-bubble{padding:9px 14px;border-radius:18px;font-size:13px;font-weight:500;max-width:78%;line-height:1.4;}
+.msg-bubble.driver{background:var(--surface-2);color:var(--text);align-self:flex-start;border-bottom-left-radius:5px;}
+.msg-bubble.rider{background:var(--primary);color:#fff;align-self:flex-end;border-bottom-right-radius:5px;}
+.msg-qr-row{display:flex;flex-wrap:wrap;gap:7px;padding:8px 18px 12px;}
+.msg-qr{background:var(--surface-2);border:1px solid var(--border);border-radius:20px;padding:7px 13px;font-size:12px;font-weight:600;color:var(--text-2);cursor:pointer;transition:all .15s;}
+.msg-qr:hover{background:var(--primary-l);border-color:var(--primary);color:var(--primary);}
+.msg-input-row{display:flex;align-items:center;gap:8px;padding:0 18px;}
+.msg-inp{flex:1;background:var(--surface-2);border:1.5px solid var(--border);border-radius:24px;padding:11px 16px;font-size:14px;color:var(--text);font-family:inherit;outline:none;transition:border-color .2s;}
+.msg-inp:focus{border-color:var(--primary);}
+.msg-send{width:44px;height:44px;border-radius:50%;background:var(--primary);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;flex-shrink:0;transition:background .15s;}
+.msg-send:hover{background:var(--primary-d);}
+/* ── TRACKING ACTIONS ── */
+.trk-actions{display:flex;gap:8px;margin-bottom:10px;}
+.trk-act-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px 8px;background:var(--surface-2);border:1.5px solid var(--border);border-radius:var(--r-s);font-size:13px;font-weight:700;color:var(--text-2);cursor:pointer;transition:all .15s;}
+.trk-act-btn:hover{background:var(--primary-l);border-color:var(--primary);color:var(--primary);}
+.trk-chg-dest{display:block;text-align:center;font-size:12px;font-weight:700;color:var(--primary);cursor:pointer;margin-bottom:10px;background:none;border:none;width:100%;padding:4px 0;}
+@media(min-width:768px){
+  .msg-sheet{bottom:auto;top:50%;transform:translateX(-50%) translateY(-50%) scale(.95);opacity:0;width:480px;max-width:90vw;border-radius:var(--r-l);max-height:88vh;transition:transform .3s cubic-bezier(.22,.68,0,1.1),opacity .28s;}
+  .msg-sheet.open{transform:translateX(-50%) translateY(-50%) scale(1);opacity:1;}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important;}}
+
+/* ── LEAFLET 1.9.4 (inlined) ── */
+.leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,.leaflet-zoom-box,.leaflet-image-layer,.leaflet-layer{position:absolute;left:0;top:0}
+.leaflet-container{overflow:hidden;background:var(--surface-2);outline-offset:1px}
+.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow{-webkit-user-select:none;user-select:none;-webkit-user-drag:none}
+.leaflet-tile::selection,.leaflet-tile::-moz-selection{background:transparent}
+.leaflet-marker-icon,.leaflet-marker-shadow{display:block}
+.leaflet-container .leaflet-overlay-pane svg,.leaflet-container .leaflet-marker-pane img,.leaflet-container .leaflet-shadow-pane img,.leaflet-container .leaflet-tile-pane img,.leaflet-container img.leaflet-image-layer,.leaflet-container .leaflet-tile{max-width:none!important;max-height:none!important;width:auto;padding:0}
+.leaflet-tile{filter:inherit;visibility:hidden}.leaflet-tile-loaded{visibility:inherit}
+.leaflet-pane{z-index:400}.leaflet-tile-pane{z-index:200}.leaflet-overlay-pane{z-index:400}.leaflet-shadow-pane{z-index:500}.leaflet-marker-pane{z-index:600}.leaflet-tooltip-pane{z-index:650}.leaflet-popup-pane{z-index:700}.leaflet-map-pane canvas{z-index:100}.leaflet-map-pane svg{z-index:200}
+.leaflet-control{position:relative;z-index:800;pointer-events:auto;float:left;clear:both}
+.leaflet-top,.leaflet-bottom{position:absolute;z-index:1000;pointer-events:none}
+.leaflet-top{top:0}.leaflet-right{right:0}.leaflet-bottom{bottom:0}.leaflet-left{left:0}
+.leaflet-right .leaflet-control{float:right}
+.leaflet-top .leaflet-control{margin-top:10px}.leaflet-bottom .leaflet-control{margin-bottom:10px}.leaflet-left .leaflet-control{margin-left:10px}.leaflet-right .leaflet-control{margin-right:10px}
+.leaflet-zoom-animated{-webkit-transform-origin:0 0;transform-origin:0 0}
+svg.leaflet-zoom-animated{will-change:transform}
+.leaflet-zoom-anim .leaflet-zoom-animated{transition:transform .25s cubic-bezier(0,0,.25,1)}
+.leaflet-zoom-anim .leaflet-tile,.leaflet-pan-anim .leaflet-tile{transition:none}
+.leaflet-interactive{cursor:pointer}.leaflet-grab{cursor:grab}
+.leaflet-popup-pane,.leaflet-control{cursor:auto}
+.leaflet-dragging .leaflet-grab,.leaflet-dragging .leaflet-marker-draggable{cursor:grabbing}
+.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-image-layer,.leaflet-pane>svg path,.leaflet-tile-container{pointer-events:none}
+.leaflet-marker-icon.leaflet-interactive,.leaflet-image-layer.leaflet-interactive,.leaflet-pane>svg path.leaflet-interactive{pointer-events:auto}
+.leaflet-bar{box-shadow:0 1px 5px rgba(0,0,0,.65);border-radius:4px}
+.leaflet-bar a{background-color:#fff;border-bottom:1px solid #ccc;width:26px;height:26px;line-height:26px;display:block;text-align:center;text-decoration:none;color:#000;transition:background .15s}
+.leaflet-bar a:hover{background-color:#f4f4f4}
+.leaflet-bar a:first-child{border-top-left-radius:4px;border-top-right-radius:4px}
+.leaflet-bar a:last-child{border-bottom-left-radius:4px;border-bottom-right-radius:4px;border-bottom:none}
+.leaflet-bar a.leaflet-disabled{cursor:default;background-color:#f4f4f4;color:#bbb}
+.leaflet-touch .leaflet-bar a{width:30px;height:30px;line-height:30px}
+.leaflet-control-zoom-in,.leaflet-control-zoom-out{font:bold 18px 'Lucida Console',Monaco,monospace;text-indent:1px}
+.leaflet-container .leaflet-control-attribution{background:rgba(255,255,255,.65);margin:0;font-size:10px;color:#333;border-radius:4px 0 0 0}
+.leaflet-control-attribution,.leaflet-control-scale-line{padding:0 5px;color:#333;line-height:1.4}
+.leaflet-div-icon{background:transparent;border:none}
+.leaflet-popup{position:absolute;text-align:center;margin-bottom:20px}
+.leaflet-popup-content-wrapper{padding:1px;text-align:left;border-radius:12px;background:#fff;color:#333;box-shadow:0 3px 14px rgba(0,0,18,.5)}
+.leaflet-popup-tip-container{width:40px;height:20px;position:absolute;left:50%;margin-left:-20px;overflow:hidden;pointer-events:none}
+.leaflet-popup-tip{width:17px;height:17px;padding:1px;margin:-10px auto 0;transform:rotate(45deg);background:#fff}
+.leaflet-popup-content{margin:13px 24px;line-height:1.3;font-size:13px;min-height:1px}
+.leaflet-popup-close-button{position:absolute;top:0;right:0;border:none;width:24px;height:24px;font:16px/24px sans-serif;color:#757575;background:transparent;cursor:pointer}
+.leaflet-tooltip{position:absolute;padding:6px;background:#fff;border:1px solid #fff;border-radius:3px;color:#222;white-space:nowrap;user-select:none;pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+#map-leaflet,#rt-leaflet,#trk-leaflet{width:100%;height:100%;display:block;}
+/* all Leaflet divs: normal-flow block so height:100% resolves against JS-set parent height */
+#map-leaflet,#rt-leaflet,#trk-leaflet{position:relative !important;}
+.leaflet-container{font-family:'DM Sans',system-ui,sans-serif;}
+
+/* ── SAFETY CODE ── */
+.safety-code-badge{display:flex;align-items:center;gap:12px;background:var(--primary-l);border:1.5px solid var(--primary);border-radius:var(--r-s);padding:12px 14px;margin-bottom:14px;}
+.safety-code-info{flex:1;}
+.safety-code-lbl{font-size:10px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;}
+.safety-code-num{font-family:'Outfit',sans-serif;font-size:30px;font-weight:900;color:var(--text);letter-spacing:6px;font-variant-numeric:tabular-nums;line-height:1;}
+.safety-code-sub{font-size:10px;color:var(--text-2);margin-top:3px;}
+
+/* ── PASSENGER COUNT ── */
+.pax-row{display:flex;align-items:center;justify-content:space-between;background:var(--surface-2);border-radius:var(--r-s);padding:12px 14px;margin-bottom:14px;}
+.pax-lbl{font-size:13px;font-weight:700;color:var(--text);}
+.pax-sub{font-size:11px;color:var(--text-2);margin-top:1px;}
+.pax-ctrl{display:flex;align-items:center;gap:10px;}
+.pax-btn{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface);font-size:18px;font-weight:700;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.pax-btn:hover{background:var(--primary-l);border-color:var(--primary);}
+.pax-val{font-family:'Outfit',sans-serif;font-size:22px;font-weight:900;color:var(--text);min-width:22px;text-align:center;}
+
+/* ── POINTS / SUBSCRIPTION ── */
+.prof-points-card{background:linear-gradient(135deg,#1A56F0 0%,#0829A8 100%);border-radius:var(--r-s);padding:16px;margin:0 20px 14px;color:#fff;position:relative;overflow:hidden;}
+.prof-points-card::before{content:'';position:absolute;top:-20px;right:-20px;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,.08);}
+.ppc-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;}
+.ppc-lbl{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;opacity:.7;margin-bottom:4px;}
+.ppc-pts{font-family:'Outfit',sans-serif;font-size:34px;font-weight:900;line-height:1;}
+.ppc-pts sub{font-size:13px;font-weight:600;opacity:.7;}
+.ppc-rides{text-align:right;}
+.ppc-rides-val{font-family:'Outfit',sans-serif;font-size:24px;font-weight:900;line-height:1;}
+.ppc-rides-lbl{font-size:10px;opacity:.7;}
+.ppc-bar{height:5px;background:rgba(255,255,255,.22);border-radius:3px;overflow:hidden;margin-bottom:5px;}
+.ppc-fill{height:100%;background:#fff;border-radius:3px;transition:width .5s ease;}
+.ppc-sub{font-size:10px;opacity:.75;}
+
+/* ── RIDE HISTORY (in profile) ── */
+.ride-hist-section{padding:0 20px 6px;}
+.rhs-ttl{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;margin-bottom:10px;}
+.rhs-empty{text-align:center;padding:18px;color:var(--muted);font-size:13px;}
+.rh-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.rh-item:last-child{border-bottom:none;}
+.rh-ic{width:38px;height:38px;border-radius:10px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.rh-info{flex:1;min-width:0;}
+.rh-dest{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rh-date{font-size:11px;color:var(--muted);margin-top:1px;}
+.rh-price{font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;color:var(--text);flex-shrink:0;}
+
+/* ── SCHEDULE ── */
+.sched-overlay{position:fixed;inset:0;background:rgba(0,0,0,0);z-index:9004;pointer-events:none;transition:background .3s;}
+.sched-overlay.open{background:rgba(0,0,0,.55);pointer-events:auto;}
+.sched-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);width:100%;max-width:500px;background:var(--surface);border-radius:var(--r-l) var(--r-l) 0 0;z-index:9005;pointer-events:auto;transition:transform .38s cubic-bezier(.22,.68,0,1.1);padding:0 20px calc(24px + env(safe-area-inset-bottom,0px));}
+.sched-sheet.open{transform:translateX(-50%) translateY(0);}
+.sched-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 0 14px;}
+.sched-ttl{font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:var(--text);}
+.sched-field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+.sched-lbl{font-size:11px;font-weight:700;color:var(--text-2);letter-spacing:.3px;text-transform:uppercase;}
+.sched-input{width:100%;padding:13px 16px;border-radius:var(--r-s);border:1.5px solid var(--border);background:var(--surface-2);color:var(--text);font-size:15px;font-family:inherit;outline:none;transition:border-color .2s;}
+.sched-input:focus{border-color:var(--primary);}
+.sched-times{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.btn-sched-confirm{width:100%;padding:15px;background:var(--primary);color:#fff;border:none;border-radius:var(--r-s);font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;transition:background .15s;}
+.btn-sched-confirm:hover{background:var(--primary-d);}
+.sched-badge{display:inline-flex;align-items:center;gap:6px;background:var(--accent-l);border:1px solid var(--accent);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;color:var(--text);cursor:pointer;margin-top:4px;}
+
+/* ── DEST SEARCH ── */
+.dest-search-wrap{position:relative;margin-bottom:12px;}
+.dest-search-inp{width:100%;padding:13px 14px 13px 44px;border-radius:var(--r-s);border:1.5px solid var(--border);background:var(--surface-2);color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:border-color .2s,box-shadow .2s;}
+.dest-search-inp:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-l);background:var(--surface);}
+.dest-search-ico{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:18px;pointer-events:none;}
+
+/* ── REGION PICKER ── */
+.region-btn{padding:5px 10px;border-radius:16px;background:var(--surface-2);border:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text-2);cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;}
+.region-btn:hover{background:var(--surface-3);}
+.region-overlay{position:fixed;inset:0;background:rgba(0,0,0,0);z-index:9004;pointer-events:none;transition:background .3s;}
+.region-overlay.open{background:rgba(0,0,0,.55);pointer-events:auto;}
+.region-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);width:100%;max-width:500px;background:var(--surface);border-radius:var(--r-l) var(--r-l) 0 0;z-index:9005;pointer-events:auto;transition:transform .38s cubic-bezier(.22,.68,0,1.1);padding:0 20px calc(24px + env(safe-area-inset-bottom,0px));}
+.region-sheet.open{transform:translateX(-50%) translateY(0);}
+.region-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 0 14px;}
+.region-ttl{font-family:'Outfit',sans-serif;font-size:20px;font-weight:800;color:var(--text);}
+.region-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:8px;}
+.region-card{padding:12px;border-radius:var(--r-s);border:2px solid var(--border);background:var(--surface-2);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:9px;}
+.region-card.sel{border-color:var(--primary);background:var(--primary-l);}
+.region-flag{font-size:22px;line-height:1;}
+.region-name{font-size:13px;font-weight:700;color:var(--text);}
+.region-sub{font-size:10px;color:var(--muted);margin-top:1px;}
+
+/* ── DRIVER VERIFICATION ── */
+.drv-verify{display:none;flex-direction:column;gap:12px;}
+.drv-verify.active{display:flex;}
+.upload-area{border:2px dashed var(--border);border-radius:var(--r-s);padding:18px;text-align:center;cursor:pointer;transition:all .15s;background:var(--surface-2);position:relative;}
+.upload-area:hover{border-color:var(--primary-d);background:var(--primary-l);}
+.upload-area.uploaded{border-color:var(--online);border-style:solid;background:rgba(0,200,83,.06);}
+.upload-ic{font-size:26px;margin-bottom:5px;}
+.upload-lbl{font-size:13px;font-weight:700;color:var(--text);}
+.upload-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.verify-steps{display:flex;gap:6px;margin-bottom:4px;}
+.vstep{flex:1;height:3px;border-radius:2px;background:var(--border);transition:background .3s;}
+.vstep.done{background:var(--online);}
+
+/* ═══════════════════════════════════
+   WEBAPP RESPONSIVE LAYOUT
+   ═══════════════════════════════════ */
+
+/* ── AUTH: desktop split (hero left, form right) ── */
+@media(min-width:768px){
+  #s-auth{flex-direction:row;overflow:hidden;}
+  .auth-hero{flex:1;min-width:0;align-items:flex-start;text-align:left;padding:80px 64px 80px;}
+  .brand-mark{font-size:84px;}
+  .auth-tagline{font-size:17px;max-width:340px;}
+  .auth-body{flex:0 0 480px;max-width:480px;overflow-y:auto;background:var(--surface);border-left:1px solid var(--border);padding:52px 44px 48px;}
+}
+
+/* ── RIDER: drawer becomes left sidebar ── */
+@media(min-width:768px){
+  #s-rider{display:grid;grid-template-rows:auto 1fr;grid-template-columns:380px 1fr;}
+  #s-rider .hdr{grid-column:1/-1;grid-row:1;}
+  #s-rider .map-wrap{grid-column:2;grid-row:2;flex:none;min-height:0;height:100%;}
+  #s-rider #drawer{grid-column:1;grid-row:2;max-height:none;overflow-y:auto;border-radius:0;box-shadow:none;border-right:1px solid var(--border);border-top:none;}
+  #s-rider .drawer-grip{display:none;}
+  #s-rider .map-float-search{display:none;}
+  #s-rider .map-btns{bottom:20px;right:20px;}
+  #s-rider .drawer-title{font-size:26px;}
+}
+
+/* ── RIDE TYPE: map left, panel right ── */
+@media(min-width:768px){
+  #s-ridetype{display:grid;grid-template-rows:1fr auto;grid-template-columns:1fr 420px;}
+  .rt-map{grid-column:1;grid-row:1/3;height:auto;min-height:0;flex-shrink:unset;}
+  .rt-sheet{grid-column:2;grid-row:1;border-radius:0;margin-top:0;border-left:1px solid var(--border);box-shadow:none;flex:none;overflow-y:auto;min-height:0;padding-top:16px;}
+  #s-ridetype .drawer-grip{display:none;}
+  .rt-bottom{grid-column:2;grid-row:2;position:static;border-left:1px solid var(--border);padding-bottom:20px;}
+  .ride-types{margin-bottom:0;}
+}
+
+/* ── DRIVER: two-column grid ── */
+@media(min-width:900px){
+  .drvr-body{display:grid;grid-template-columns:1fr 360px;grid-template-rows:auto auto auto auto;column-gap:20px;max-width:1100px;margin:0 auto;width:100%;align-items:start;padding:24px 28px 56px;}
+  .online-card{grid-column:1;grid-row:1;}
+  .earn-card{grid-column:1;grid-row:2;}
+  #off-hint{grid-column:1;grid-row:3;}
+  #req-wrap{grid-column:1;grid-row:4;}
+  .drvr-body>div:last-child{grid-column:2;grid-row:1 / span 4;position:sticky;top:20px;}
+}
+
+/* ── 2FA: constrain width on desktop ── */
+@media(min-width:768px){
+  #s-2fa{display:flex;align-items:center;justify-content:center;overflow-y:auto;}
+  .tfa-body{max-width:480px;width:100%;padding:48px 32px;}
+}
+
+/* ── OVERLAYS: centered dialogs on desktop ── */
+@media(min-width:768px){
+  .prof-sheet{bottom:auto;top:50%;transform:translateX(-50%) translateY(-50%) scale(.95);opacity:0;width:540px;max-width:90vw;border-radius:var(--r-l);max-height:88vh;padding-bottom:32px;transition:transform .3s cubic-bezier(.22,.68,0,1.1),opacity .28s;}
+  .prof-sheet.open{transform:translateX(-50%) translateY(-50%) scale(1);opacity:1;}
+  .prof-grip{display:none;}
+  .pay-sheet{bottom:auto;top:50%;transform:translateX(-50%) translateY(-50%) scale(.95);opacity:0;width:480px;max-width:90vw;border-radius:var(--r-l);max-height:88vh;transition:transform .3s cubic-bezier(.22,.68,0,1.1),opacity .28s;}
+  .pay-sheet.open{transform:translateX(-50%) translateY(-50%) scale(1);opacity:1;}
+  .modal-overlay{align-items:center;}
+  .modal{max-width:560px;width:90vw;border-radius:var(--r-l);transform:scale(.95);opacity:0;transition:transform .3s cubic-bezier(.22,.68,0,1.1),opacity .28s;max-height:88vh;}
+  .modal-overlay.open .modal{transform:scale(1);opacity:1;}
+}
+/* Street-level trip tracking */
+.trk-map{background:var(--surface-2);min-height:240px;}
+#trk-leaflet{position:absolute!important;inset:0;width:100%;height:100%;}
+.trip-map-top{position:absolute;z-index:800;top:18px;left:16px;right:16px;display:flex;justify-content:space-between;pointer-events:none;gap:8px;}
+.trip-map-top span{background:var(--surface);color:var(--text);border-radius:30px;padding:9px 13px;box-shadow:var(--shadow);font-size:11px;font-weight:800;}
+.trip-map-tools{position:absolute;z-index:800;right:16px;bottom:34px;display:grid;gap:8px;}
+.trip-map-tools button{border:0;border-radius:13px;width:44px;height:44px;background:var(--surface);color:var(--text);font-size:24px;box-shadow:var(--shadow);cursor:pointer;}
+.trip-summary{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:12px;}
+.trip-summary small{display:block;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;}
+.trip-summary strong{font-size:14px;display:block;}
+.trip-progress{height:4px;background:var(--surface-2);border-radius:6px;overflow:hidden;margin-bottom:16px;}
+.trip-progress i{display:block;background:var(--primary);height:100%;width:0;transition:width .2s;}
+#trip-notice{font-size:12px;line-height:1.5;color:var(--text-2);margin-bottom:10px;}
+.trip-start{width:100%;background:var(--primary);color:#fff;margin:12px 0;padding:14px;border-radius:12px;border:none;font-weight:700;cursor:pointer;}
+.trip-car{width:28px;height:44px;filter:drop-shadow(0 3px 4px #0005);transform-origin:center;}
+.trip-car svg{width:28px;height:44px;}
+.trk-spinner-wrap{z-index:810;pointer-events:none;}
+.trk-sheet{max-height:65vh;overflow-y:auto;flex-shrink:0;}
+@media(min-width:768px){.trk-sheet{max-height:calc(100vh - 40px);width:380px;flex-shrink:0;}.trk-map{min-width:0;}}
+@media(max-width:767px){.trk-sheet{max-height:58vh;padding:18px 20px;}}
+
+/* Accessible currency controls and logout hit targets. */
+.currency-field{display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin:0 0 14px;}
+.currency-field>span{font-size:12px;font-weight:700;}
+.currency-select{font:inherit;font-weight:700;font-size:13px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:9px;padding:9px 10px;max-width:210px;min-height:42px;}
+.currency-note{color:var(--text-2);font-size:11px;line-height:1.45;margin:-5px 0 14px;}
+.prof-currency{margin:0 22px 16px;}
+.prof-foot{position:sticky;bottom:0;background:var(--surface);padding:14px 22px max(14px,env(safe-area-inset-bottom));border-top:1px solid var(--border);z-index:3;}
+.btn-logout{min-height:48px;touch-action:manipulation;}
+.prof-sheet:not(.open),.pay-sheet:not(.open),.msg-sheet:not(.open){visibility:hidden;pointer-events:none;}
+.prof-sheet.open,.pay-sheet.open,.msg-sheet.open{visibility:visible;pointer-events:auto;}
+.screen:not(.active){visibility:hidden;}
+.screen.active{visibility:visible;}
+#app{height:100dvh;}
+.hdr{padding-top:max(12px,env(safe-area-inset-top));}
+.auth-hero{padding-top:max(56px,env(safe-area-inset-top));}
+@media(max-width:767px){.prof-sheet{max-height:90dvh;}.currency-select{font-size:16px;}.auth-body .currency-field{margin-top:4px;}}
+.modal-overlay:not(.open),.region-overlay:not(.open),.sched-overlay:not(.open){visibility:hidden;pointer-events:none;}
+.modal-overlay.open,.region-overlay.open,.sched-overlay.open{visibility:visible;}
+</style>
+
+<!-- ═══ OVERLAYS (outside #app) ═══ -->
+<div class="toast" id="toast"></div>
+
+<!-- Profile -->
+<div class="prof-overlay" id="prof-overlay" onclick="closeProfile()"></div>
+<div class="prof-sheet" id="prof-sheet">
+  <div class="prof-grip"></div>
+  <div class="prof-hdr">
+    <span class="prof-hdr-ttl" id="ph-ttl">Moj profil</span>
+    <button class="prof-close" onclick="closeProfile()">✕</button>
+  </div>
+  <div class="prof-av-wrap">
+    <div class="prof-av-big" id="prof-av-big" style="background:#1A56F0">EH</div>
+  </div>
+  <p class="prof-name" id="prof-name">Emir Hadžić</p>
+  <div style="display:flex;justify-content:center;margin-bottom:20px;">
+    <span class="prof-role" id="prof-role-badge">🧍 Putnik</span>
+  </div>
+  <div class="prof-stats">
+    <div class="prof-stat"><div class="ps-v" id="ps-trips">47</div><div class="ps-l" id="ps-trips-l">Vožnje</div></div>
+    <div class="prof-stat"><div class="ps-v" id="ps-stars">4.8 ⭐</div><div class="ps-l" id="ps-stars-l">Ocjena</div></div>
+    <div class="prof-stat"><div class="ps-v" id="ps-year">2024</div><div class="ps-l" id="ps-year-l">Član od</div></div>
+  </div>
+  <div class="prof-info">
+    <div class="prof-row">
+      <div class="prof-row-ic">📞</div>
+      <div><div class="prof-row-lbl" id="pr-phone-l">Telefon</div><div class="prof-row-val" id="pr-phone-v">+387 61 234 567</div></div>
+    </div>
+    <div class="prof-row">
+      <div class="prof-row-ic">📧</div>
+      <div><div class="prof-row-lbl">E-mail</div><div class="prof-row-val" id="pr-email-v">emir@primjer.ba</div></div>
+    </div>
+    <div class="prof-row">
+      <div class="prof-row-ic">📍</div>
+      <div><div class="prof-row-lbl" id="pr-city-l">Grad</div><div class="prof-row-val">Sarajevo, BiH</div></div>
+    </div>
+    <div class="prof-row">
+      <div class="prof-row-ic">🔐</div>
+      <div><div class="prof-row-lbl" id="pr-2fa-l">Dvofaktorska zaštita</div><div class="prof-row-val" style="color:var(--online)">✓ Aktivna</div></div>
+    </div>
+  </div>
+  <!-- Points card -->
+  <div class="prof-points-card" id="prof-points-card">
+    <div class="ppc-top">
+      <div>
+        <div class="ppc-lbl" id="ppc-lbl">Vozi Poeni</div>
+        <div class="ppc-val" id="ppc-val">23</div>
+        <div class="ppc-sub" id="ppc-sub">Skupite 100 poena za besplatnu vožnju</div>
+      </div>
+      <div class="ppc-badge" id="ppc-badge">
+        <div style="font-size:22px;line-height:1;">⭐</div>
+        <div style="font-size:10px;font-weight:800;margin-top:2px;" id="ppc-free">3 gratis</div>
+      </div>
+    </div>
+    <div class="ppc-bar-bg">
+      <div class="ppc-bar-fill" id="ppc-bar-fill" style="width:23%;"></div>
+    </div>
+    <div style="font-size:10px;color:rgba(255,255,255,.7);margin-top:4px;" id="ppc-next">Još 77 poena do sljedeće besplatne vožnje</div>
+  </div>
+  <!-- Ride history -->
+  <div class="ride-hist-section" id="ride-hist-section">
+    <div class="rh-ttl" id="rh-ttl">🕐 Historija vožnji</div>
+    <div id="rh-list">
+      <div style="color:var(--text-2);font-size:12px;text-align:center;padding:20px 0;" id="rh-empty">Nema dovršenih vožnji</div>
+    </div>
+  </div>
+  <label class="currency-field prof-currency" for="currency-profile"><span data-currency-label>Valuta</span><select id="currency-profile" class="currency-select" data-currency-select onchange="setCurrency(this.value)"><option value="BAM">BAM · KM</option><option value="USD">USD · $</option><option value="EUR">EUR · €</option></select></label><div class="prof-menu">
+    <button class="pmi" onclick="showToast(T('t-edit'))"><div class="pmi-ic">✏️</div><span class="pmi-lbl" id="pmi-edit">Uredi profil</span><span class="pmi-arr">›</span></button>
+    <button class="pmi" onclick="openPaySheet()"><div class="pmi-ic">💳</div><span class="pmi-lbl" id="pmi-pay">Metode plaćanja</span><span class="pmi-arr">›</span></button>
+    <button class="pmi" onclick="openModal('tos')"><div class="pmi-ic">📄</div><span class="pmi-lbl" id="pmi-tos">Uvjeti korištenja</span><span class="pmi-arr">›</span></button>
+    <button class="pmi" onclick="openModal('policy')"><div class="pmi-ic">💰</div><span class="pmi-lbl" id="pmi-policy">Politika povrata sredstava</span><span class="pmi-arr">›</span></button>
+    <button class="pmi" onclick="toggleThemeFromProfile()"><div class="pmi-ic" id="theme-pmi-ic">🌙</div><span class="pmi-lbl" id="pmi-theme">Tamni način rada</span><span class="pmi-arr">›</span></button>
+  </div>
+  <div class="prof-foot">
+    <button class="btn-logout" id="prof-logout-btn" onclick="logout()">← <span id="logout-lbl">Odjavi se</span></button>
+  </div>
+</div>
+
+<!-- Message -->
+<div class="msg-overlay" id="msg-overlay" onclick="closeMsgSheet()"></div>
+<div class="msg-sheet" id="msg-sheet">
+  <div class="prof-grip"></div>
+  <div class="msg-hdr">
+    <div class="msg-drv-av">MK</div>
+    <div style="flex:1">
+      <div class="msg-drv-nm" id="msg-drv-nm">Muamer Kovač</div>
+      <div class="msg-drv-sub">🚗 VW Golf · BA 234-K · ⭐ 4.9</div>
+    </div>
+    <button class="prof-close" onclick="closeMsgSheet()">✕</button>
+  </div>
+  <div class="msg-chat" id="msg-chat">
+    <div class="msg-bubble driver" id="msg-first-bubble">Dolazim uskoro! 👋</div>
+  </div>
+  <div class="msg-qr-row" id="msg-qr-row">
+    <button class="msg-qr" onclick="quickMsg('Ovdje sam! 📍')">Ovdje sam</button>
+    <button class="msg-qr" onclick="quickMsg('Sačekajte me molim.')">Sačekajte</button>
+    <button class="msg-qr" onclick="quickMsg('Gdje ste tačno?')">Gdje ste?</button>
+    <button class="msg-qr" onclick="quickMsg('Hvala! 🙏')">Hvala</button>
+  </div>
+  <div class="msg-input-row">
+    <input class="msg-inp" type="text" id="msg-inp" placeholder="Napišite poruku...">
+    <button class="msg-send" onclick="sendMsg()">➤</button>
+  </div>
+</div>
+
+<!-- Payment -->
+<div class="pay-overlay" id="pay-overlay" onclick="closePaySheet()"></div>
+<div class="pay-sheet" id="pay-sheet">
+  <div class="prof-grip"></div>
+  <label class="currency-field " for="currency-payment"><span data-currency-label>Valuta</span><select id="currency-payment" class="currency-select" data-currency-select onchange="setCurrency(this.value)"><option value="BAM">BAM · KM</option><option value="USD">USD · $</option><option value="EUR">EUR · €</option></select></label><div class="pay-sheet-ttl" id="pay-ttl">Metode plaćanja</div>
+  <div class="pay-opt sel" id="po-cash" onclick="pickPay('cash')">
+    <div class="pay-opt-ic">💵</div>
+    <div><div class="pay-opt-name" id="po-cash-name">Gotovina</div><div class="pay-opt-desc" id="po-cash-desc">Plaćanje vozaču</div></div>
+    <div class="pay-opt-chk">✓</div>
+  </div>
+  <div class="pay-opt" id="po-card" onclick="pickPay('card')">
+    <div class="pay-opt-ic">💳</div>
+    <div><div class="pay-opt-name" id="po-card-name">Banka kartica</div><div class="pay-opt-desc">Visa / Mastercard · •••• 4892</div></div>
+    <div class="pay-opt-chk">✓</div>
+  </div>
+  <div class="pay-opt" id="po-wallet" onclick="pickPay('wallet')">
+    <div class="pay-opt-ic">📱</div>
+    <div><div class="pay-opt-name" id="po-wallet-name">Vozi Novčanik</div><div class="pay-opt-desc"><span id="wallet-label">Stanje</span>: <span data-bam="24.50">24.50 KM</span></div></div>
+    <div class="pay-opt-chk">✓</div>
+  </div>
+  <div class="pay-policy">
+    <div class="pay-policy-ttl">💰 <span id="policy-ttl-txt">Politika povrata</span></div>
+    <div class="pay-policy-txt" id="policy-body-txt">Otkazivanje unutar 2 minute je besplatno. Nakon toga, naplaćuje se naknada od 1.50 KM. Povrat sredstava na karticu procesira se u roku od 3–5 radnih dana.</div>
+    <span class="pay-policy-link" onclick="openModal('policy')" id="policy-more">Pogledaj kompletnu politiku →</span>
+  </div>
+</div>
+
+<!-- Modal (ToS / Policy) -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-ttl" id="modal-ttl">Uvjeti korištenja</div>
+    <div class="modal-body" id="modal-body"></div>
+    <button class="modal-close" id="modal-close-btn" onclick="closeModal()">Zatvori</button>
+  </div>
+</div>
+
+<!-- ═══ APP ═══ -->
+</head><body><div id="app">
+
+<!-- ─── AUTH ─── -->
+<div id="s-auth" class="screen active">
+  <div class="auth-hero">
+    <div class="brand-mark">Voz<em>i</em></div>
+    <div class="brand-sub">Bosnia &amp; Herzegovina</div>
+    <p class="auth-tagline" id="tagline">Vaša vožnja u jednom dodiru</p>
+  </div>
+  <div class="auth-body">
+    <div class="auth-topbar">
+      <div class="lang-sw">
+        <button class="lang-btn on" onclick="setLang('bs')">BS</button>
+        <button class="lang-btn" onclick="setLang('en')">EN</button>
+        <button class="lang-btn" onclick="setLang('sq')">SQ</button>
+      </div>
+      <button class="theme-btn" id="auth-theme-btn" onclick="toggleTheme()" title="Tamni način">🌙</button>
+    </div>
+    <label class="currency-field " for="currency-auth"><span data-currency-label>Valuta</span><select id="currency-auth" class="currency-select" data-currency-select onchange="setCurrency(this.value)"><option value="BAM">BAM · KM</option><option value="USD">USD · $</option><option value="EUR">EUR · €</option></select></label><p class="currency-note" data-currency-note></p>
+    <div class="auth-tabs">
+      <button class="auth-tab on" id="tab-in" onclick="authTab('in')">Prijava</button>
+      <button class="auth-tab" id="tab-reg" onclick="authTab('reg')">Registracija</button>
+    </div>
+    <!-- Login form -->
+    <div class="aform" id="f-in">
+      <div class="fg">
+        <label id="lbl-email-in">E-mail adresa</label>
+        <input type="email" id="inp-email-in" placeholder="emir@primjer.ba">
+      </div>
+      <div class="fg">
+        <label id="lbl-pw-in">Lozinka</label>
+        <div class="pw-wrap">
+          <input type="password" id="inp-pw-in" placeholder="••••••••">
+          <button class="pw-eye" onclick="togglePw('inp-pw-in',this)" type="button">👁</button>
+        </div>
+      </div>
+      <p class="forgot" id="forg" onclick="showToast(T('t-forgot'))">Zaboravili ste lozinku?</p>
+      <div>
+        <label style="font-size:12px;font-weight:700;color:var(--text-2);display:block;margin-bottom:8px;" id="as-lbl">Nastavi kao:</label>
+        <div class="role-pick">
+          <button class="rcard on" id="r-rider" onclick="pickRole('rider')">
+            <span class="ri">🧍</span><span class="rl" id="rl-putnik">Putnik</span><span class="rd" id="rd-naruci">Naruči vožnju</span>
+          </button>
+          <button class="rcard" id="r-driver" onclick="pickRole('driver')">
+            <span class="ri">🚗</span><span class="rl" id="rl-vozac">Vozač</span><span class="rd" id="rd-zaradi">Zaradite vožnjom</span>
+          </button>
+        </div>
+      </div>
+      <button class="btn-main" id="btn-sign" onclick="doLogin()">Prijavi se →</button>
+      <div class="auth-divider"><span id="or-lbl">ili</span></div>
+      <button class="btn-social" onclick="showToast(T('t-google'))">🌐 <span id="google-lbl">Nastavi s Google</span></button>
+      <p class="auth-note"><span id="no-acc">Nemate nalog? </span><a href="#" onclick="authTab('reg');return false" id="go-reg">Registrujte se</a></p>
+    </div>
+    <!-- Register form -->
+    <div class="aform" id="f-reg" style="display:none">
+      <div class="frow">
+        <div class="fg"><label id="lbl-fname">Ime</label><input type="text" id="inp-fname" placeholder="Emir"></div>
+        <div class="fg"><label id="lbl-lname">Prezime</label><input type="text" id="inp-lname" placeholder="Hadžić"></div>
+      </div>
+      <div class="fg"><label id="lbl-email-reg">E-mail adresa</label><input type="email" id="inp-email-reg" placeholder="emir@primjer.ba"></div>
+      <div class="fg"><label id="lbl-phone">Broj telefona</label><input type="tel" id="inp-phone" placeholder="+387 61 234 567"></div>
+      <div class="fg">
+        <label id="lbl-pw-reg">Lozinka</label>
+        <div class="pw-wrap">
+          <input type="password" id="inp-pw-reg" placeholder="Min. 8 znakova">
+          <button class="pw-eye" onclick="togglePw('inp-pw-reg',this)" type="button">👁</button>
+        </div>
+      </div>
+      <div class="fg">
+        <label id="lbl-pw-confirm">Potvrdi lozinku</label>
+        <div class="pw-wrap">
+          <input type="password" id="inp-pw-confirm" placeholder="Ponovi lozinku">
+          <button class="pw-eye" onclick="togglePw('inp-pw-confirm',this)" type="button">👁</button>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:700;color:var(--text-2);display:block;margin-bottom:8px;" id="ras-lbl">Registruj se kao:</label>
+        <div class="role-pick">
+          <button class="rcard on" id="rr-rider" onclick="pickRegRole('rider')">
+            <span class="ri">🧍</span><span class="rl">Putnik</span><span class="rd">Naruči vožnju</span>
+          </button>
+          <button class="rcard" id="rr-driver" onclick="pickRegRole('driver')">
+            <span class="ri">🚗</span><span class="rl">Vozač</span><span class="rd">Zaradite vožnjom</span>
+          </button>
+        </div>
+      </div>
+      <!-- Driver verification docs — shown only when driver role is selected -->
+      <div id="driver-docs-section" style="display:none;background:var(--surface-2,#f5f5f5);border-radius:12px;padding:16px;border:1.5px solid var(--border);gap:12px;display:none;flex-direction:column;">
+        <p style="font-size:12px;font-weight:700;color:var(--primary);margin:0 0 4px;text-transform:uppercase;letter-spacing:.05em;">📋 Verifikacija vozača</p>
+        <p style="font-size:11px;color:var(--text-2);margin:0 0 10px;">Vaši dokumenti se pregledaju unutar 24 sata.</p>
+        <div class="fg">
+          <label>Broj vozačke dozvole</label>
+          <input type="text" id="inp-license" placeholder="npr. BA123456" autocomplete="off">
+        </div>
+        <div class="fg">
+          <label>Broj police osiguranja</label>
+          <input type="text" id="inp-insurance" placeholder="npr. OSG-2024-887733" autocomplete="off">
+        </div>
+        <div class="fg">
+          <label>Registracija vozila (tablice)</label>
+          <input type="text" id="inp-vreg" placeholder="npr. BA 234-K" autocomplete="off">
+        </div>
+        <div class="fg">
+          <label>Opis sebe i vašeg automobila</label>
+          <textarea id="inp-drvbio" rows="2" placeholder="Npr. Vozim 10 god, čist auto, friendly…" style="resize:none;font-family:inherit;font-size:14px;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text-1);width:100%;box-sizing:border-box;"></textarea>
+        </div>
+      </div>
+      <div class="tos-row" onclick="toggleTos()" style="cursor:pointer;user-select:none;">
+        <div class="tos-box" id="tos-check"></div>
+        <p class="tos-txt" id="tos-txt">Prihvatam <a href="#" onclick="event.stopPropagation();openModal('tos');return false" id="tos-link">Uvjete korištenja</a> i <a href="#" onclick="event.stopPropagation();openModal('policy');return false" id="policy-link">Politiku privatnosti</a> platforme Vozi.</p>
+      </div>
+      <button class="btn-main" id="btn-reg" onclick="doRegister()">Kreiraj nalog →</button>
+      <p class="auth-note"><span id="has-acc">Već imate nalog? </span><a href="#" onclick="authTab('in');return false" id="go-in">Prijavite se</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- ─── 2FA ─── -->
+<div id="s-2fa" class="screen out-right">
+  <div class="tfa-body">
+    <button class="tfa-back" onclick="goTo('s-auth')">← <span id="tfa-back-lbl">Nazad</span></button>
+    <div class="tfa-icon">🔐</div>
+    <h2 class="tfa-title" id="tfa-title">Provjera identiteta</h2>
+    <p class="tfa-sub" id="tfa-sub">Poslali smo 6-cifreni kod na<br><strong id="tfa-phone-show">+387 61 ••• 567</strong></p>
+    <div class="otp-row">
+      <input class="otp-box" type="text" maxlength="1" inputmode="numeric" id="otp0" oninput="otpNext(this,0)" onkeydown="otpBack(event,0)" autocomplete="off">
+      <input class="otp-box" type="text" maxlength="1" inputmode="numeric" id="otp1" oninput="otpNext(this,1)" onkeydown="otpBack(event,1)" autocomplete="off">
+      <input class="otp-box" type="text" maxlength="1" inputmode="numeric" id="otp2" oninput="otpNext(this,2)" onkeydown="otpBack(event,2)" autocomplete="off">
+      <input class="otp-box" type="text" maxlength="1" inputmode="numeric" id="otp3" oninput="otpNext(this,3)" onkeydown="otpBack(event,3)" autocomplete="off">
+      <input class="otp-box" type="text" maxlength="1" inputmode="numeric" id="otp4" oninput="otpNext(this,4)" onkeydown="otpBack(event,4)" autocomplete="off">
+      <input class="otp-box" type="text" maxlength="1" inputmode="numeric" id="otp5" oninput="otpNext(this,5)" onkeydown="otpBack(event,5)" autocomplete="off">
+    </div>
+    <p class="tfa-hint" id="tfa-hint">Niste primili kod? <a href="#" onclick="showToast(T('t-resend'));return false" id="tfa-resend">Pošalji ponovo</a></p>
+    <div class="tfa-divider"></div>
+    <p class="tfa-alt" id="tfa-alt">Demo: unesite bilo koji 6 cifara</p>
+    <button class="btn-main" onclick="enterApp()" id="tfa-skip-btn" style="margin-top:10px;width:100%;max-width:320px;font-size:16px;padding:16px;">Preskoči (demo) →</button>
+  </div>
+</div>
+
+<!-- ─── RIDER ─── -->
+<div id="s-rider" class="screen out-right">
+  <header class="hdr">
+    <div class="hdr-brand">Voz<em>i</em></div>
+    <div class="hdr-right">
+      <div class="lang-sw">
+        <button class="lang-btn on" onclick="setLang('bs')">BS</button>
+        <button class="lang-btn" onclick="setLang('en')">EN</button>
+        <button class="lang-btn" onclick="setLang('sq')">SQ</button>
+      </div>
+      <button class="region-btn" id="region-hdr-btn" onclick="openRegionSheet()"><span id="region-flag">🇧🇦</span> <span id="region-code-lbl">BA</span></button>
+      <button class="icon-btn" onclick="toggleTheme()" id="rider-theme-btn">🌙</button>
+      <div class="av" style="background:#1A56F0;" onclick="openProfile('rider')" title="Profil">EH</div>
+    </div>
+  </header>
+  <div class="map-wrap">
+    <div id="map-leaflet" style="width:100%;height:100%;"></div>
+    <div class="map-float-search">
+      <div class="map-sbar" onclick="openSearchOverlay()">
+        <div class="map-sbar-left">📍</div>
+        <div class="map-sbar-text">
+          <div class="map-sbar-lbl" id="map-lbl-where">KAMO IDETE?</div>
+          <div class="map-sbar-ph" id="map-sbar-ph">Unesite odredište…</div>
+        </div>
+        <span class="map-sbar-arrow">›</span>
+      </div>
+    </div>
+    <div class="map-btns">
+      <button class="map-icon-btn" onclick="centerMap()">📍</button>
+      <button class="map-icon-btn" onclick="mainMap&&mainMap.zoomIn()">＋</button>
+      <button class="map-icon-btn" onclick="mainMap&&mainMap.zoomOut()">－</button>
+    </div>
+  </div>
+  <div class="drawer" id="drawer">
+    <div class="drawer-grip"></div>
+    <div id="d-search"><label class="currency-field " for="currency-rider"><span data-currency-label>Valuta</span><select id="currency-rider" class="currency-select" data-currency-select onchange="setCurrency(this.value)"><option value="BAM">BAM · KM</option><option value="USD">USD · $</option><option value="EUR">EUR · €</option></select></label>
+      <h2 class="drawer-title" id="dt-where">Kamo idete?</h2>
+      <div class="sbar" onclick="openSearchOverlay()">
+        <div class="sbar-dots">
+          <div class="dot-o"></div><div class="dot-ln"></div><div class="dot-d"></div>
+        </div>
+        <div class="sbar-fields">
+          <div class="sbar-f">
+            <span class="sbar-lbl" id="lbl-pickup">POLAZIŠTE</span>
+            <span class="sbar-val" id="pickup-val">Vaša lokacija (GPS)</span>
+          </div>
+          <div class="sbar-sep"></div>
+          <div class="sbar-f">
+            <span class="sbar-lbl" id="lbl-dest">ODREDIŠTE</span>
+            <span class="sbar-val ph" id="dest-ph">Unesite odredište...</span>
+          </div>
+        </div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <button onclick="openSchedSheet()" style="width:100%;padding:12px 16px;background:var(--surface-2);border:1.5px dashed var(--border);border-radius:var(--r-s);font-size:13px;font-weight:700;color:var(--text-2);cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:18px;">📅</span> <span id="sched-btn-lbl">Zakaži vožnju unaprijed</span>
+        </button>
+      </div>
+      <div class="sugg-lbl" id="quick-lbl">BRZI IZBOR</div>
+      <div class="sugg" onclick="pickDest('Baščaršija',8.5,14,2.1)">
+        <div class="sugg-ic">🕌</div>
+        <div class="sugg-info"><div class="sugg-name">Baščaršija</div><div class="sugg-addr">Stari Grad, Sarajevo</div></div>
+        <span class="sugg-km">2.1 km</span>
+      </div>
+      <div class="sugg" onclick="pickDest('Vijećnica',9.2,16,2.4)">
+        <div class="sugg-ic">🏛️</div>
+        <div class="sugg-info"><div class="sugg-name">Vijećnica</div><div class="sugg-addr">Obala Kulina bana</div></div>
+        <span class="sugg-km">2.4 km</span>
+      </div>
+      <div class="sugg" onclick="pickDest('Aerodrom Sarajevo',24.8,28,11.3)">
+        <div class="sugg-ic">✈️</div>
+        <div class="sugg-info"><div class="sugg-name">Aerodrom Sarajevo</div><div class="sugg-addr">Kurta Schorka 36, Ilidža</div></div>
+        <span class="sugg-km">11.3 km</span>
+      </div>
+      <div class="sugg" onclick="pickDest('BBI Centar',11.4,20,3.8)">
+        <div class="sugg-ic">🛍️</div>
+        <div class="sugg-info"><div class="sugg-name">BBI Centar</div><div class="sugg-addr">Trg djece Sarajeva bb</div></div>
+        <span class="sugg-km">3.8 km</span>
+      </div>
+      <div class="sugg" onclick="pickDest('Skenderija',6.8,11,1.6)">
+        <div class="sugg-ic">🏟️</div>
+        <div class="sugg-info"><div class="sugg-name">Skenderija</div><div class="sugg-addr">Terezija, Sarajevo</div></div>
+        <span class="sugg-km">1.6 km</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── RIDE TYPE ─── -->
+<div id="s-ridetype" class="screen out-right">
+  <div class="rt-map">
+    <div id="rt-leaflet" style="width:100%;height:100%;"></div>
+  </div>
+  <div class="rt-sheet">
+    <div class="drawer-grip"></div>
+    <div class="rt-back-row">
+      <button class="back-btn" onclick="goTo('s-rider')">←</button>
+      <span class="rt-title" id="rt-title">Odaberi vožnju</span>
+    </div>
+    <div class="rt-route" id="rt-route">
+      <span>📍</span> <span id="rt-from-txt">Vaša lokacija</span>
+      <span style="color:var(--muted)">→</span>
+      <strong id="rt-to-txt">—</strong>
+      <button onclick="goTo('s-rider')" style="margin-left:auto;flex-shrink:0;background:var(--surface-2);border:none;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;color:var(--primary);cursor:pointer;" id="rt-chg-btn">Promijeni</button>
+    </div>
+    <div class="pax-row">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);" id="pax-lbl">👥 Broj putnika</div>
+        <div style="font-size:11px;color:var(--text-2);" id="pax-sub">Odaberite broj mjesta</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="pax-btn" onclick="changePax(-1)">−</button>
+        <span class="pax-val" id="pax-val">1</span>
+        <button class="pax-btn" onclick="changePax(1)">+</button>
+      </div>
+    </div>
+    <label class="currency-field " for="currency-booking"><span data-currency-label>Valuta</span><select id="currency-booking" class="currency-select" data-currency-select onchange="setCurrency(this.value)"><option value="BAM">BAM · KM</option><option value="USD">USD · $</option><option value="EUR">EUR · €</option></select></label><p class="currency-note" data-currency-note></p><div class="ride-types">
+      <div class="rt-card sel" id="rtc-x" onclick="selRideType('x')">
+        <div class="rt-card-icon">🚗</div>
+        <div class="rt-card-info">
+          <div class="rt-name" id="rtn-x">VoziX <span class="rt-badge" id="rtb-x">Preporučeno</span></div>
+          <div class="rt-desc" id="rtd-x">Standardna vožnja · do 4 osobe</div>
+          <div class="rt-eta" id="rte-x">🕐 3 min · 2 vozača u blizini</div>
+        </div>
+        <div class="rt-price"><div class="rt-price-val" id="rtp-x">8.50</div><div class="rt-price-unit">KM</div></div>
+        <div class="rt-sel-dot">✓</div>
+      </div>
+      <div class="rt-card" id="rtc-comfort" onclick="selRideType('comfort')">
+        <div class="rt-card-icon">🚙</div>
+        <div class="rt-card-info">
+          <div class="rt-name" id="rtn-c">VoziComfort</div>
+          <div class="rt-desc" id="rtd-c">Udobnija vožnja · noviji automobil</div>
+          <div class="rt-eta" id="rte-c">🕐 5 min · 1 vozač u blizini</div>
+        </div>
+        <div class="rt-price"><div class="rt-price-val" id="rtp-c">12.80</div><div class="rt-price-unit">KM</div></div>
+        <div class="rt-sel-dot">✓</div>
+      </div>
+      <div class="rt-card" id="rtc-xl" onclick="selRideType('xl')">
+        <div class="rt-card-icon">🚐</div>
+        <div class="rt-card-info">
+          <div class="rt-name" id="rtn-xl">VoziXL</div>
+          <div class="rt-desc" id="rtd-xl">Kombi · do 6 osoba</div>
+          <div class="rt-eta" id="rte-xl">🕐 7 min · 1 vozač u blizini</div>
+        </div>
+        <div class="rt-price"><div class="rt-price-val" id="rtp-xl">15.20</div><div class="rt-price-unit">KM</div></div>
+        <div class="rt-sel-dot">✓</div>
+      </div>
+    </div>
+  </div>
+  <div class="rt-bottom">
+    <div class="pay-mini" onclick="openPaySheet()">
+      <div class="pay-mini-ic" id="pm-ic">💵</div>
+      <span class="pay-mini-name" id="pm-name">Gotovina</span>
+      <span class="pay-mini-chg" id="pm-chg">Promijeni</span>
+    </div>
+    <div style="display:flex;gap:10px;width:100%;">
+      <button onclick="goTo('s-rider')" id="btn-cancel-ride" style="flex:0 0 auto;padding:0 20px;height:54px;background:var(--surface-2);border:1.5px solid var(--border);border-radius:var(--r-s);font-size:14px;font-weight:700;color:var(--text-2);cursor:pointer;white-space:nowrap;">✕ <span id="btn-cancel-txt">Otkaži</span></button>
+      <button class="btn-confirm" onclick="confirmRide()" style="flex:1;">
+        🚗 <span id="btn-conf-txt">Naruči vožnju</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── TRACKING ─── -->
+<div id="s-tracking" class="screen out-right">
+  <div class="trk-map">
+    <div id="trk-leaflet"></div>
+    <div class="trip-map-top"><span id="trip-source">DEMO · Simulacija</span><span id="trip-speed">20×</span></div>
+    <div class="trip-map-tools">
+      <button type="button" onclick="fitTripRoute()" id="trip-fit" aria-label="Show full route">↗</button>
+      <button type="button" onclick="followTrip()" id="trip-follow" aria-label="Follow car">◎</button>
+      <button type="button" onclick="trkMap&&trkMap.zoomIn()" aria-label="Zoom in">+</button>
+      <button type="button" onclick="trkMap&&trkMap.zoomOut()" aria-label="Zoom out">−</button>
+    </div>
+    <div class="trk-spinner-wrap" id="trk-spinner-wrap">
+      <div class="trk-spinner"></div>
+      <span class="trk-spinner-lbl" id="trk-search-lbl">Tražimo vozača...</span>
+    </div>
+  </div>
+  <div class="trk-sheet">
+    <div class="trip-summary"><div><small id="trip-dest-label">ODREDIŠTE</small><strong id="trip-dest-name"></strong></div><strong id="trip-distance">—</strong></div>
+    <div id="trip-notice" role="status"></div>
+    <div class="trip-progress"><i id="trip-progress-fill"></i></div>
+    <div class="trk-status-row">
+      <div class="trk-dot" id="trk-dot"></div>
+      <div>
+        <div class="trk-status-lbl" id="trk-status-lbl">Tražimo vozača...</div>
+        <div class="trk-status-sub" id="trk-status-sub">Molimo sačekajte trenutak</div>
+      </div>
+    </div>
+    <div class="trk-driver-card slide-up" id="trk-driver-card" hidden>
+      <div class="trk-drv-av" id="trk-drv-av" style="font-size:28px;background:none;">🧑</div>
+      <div class="trk-drv-info">
+        <div class="trk-drv-name" id="trk-drv-name">Muamer Kovač</div>
+        <div class="trk-drv-car" id="trk-drv-car">🚗 VW Golf · BA 234-K · ⭐ 4.9</div>
+        <div class="trk-drv-bio" id="trk-drv-bio" style="font-size:11px;color:var(--text-2);margin-top:2px;"></div>
+      </div>
+      <div class="trk-eta-box">
+        <div class="trk-eta-val" id="trk-eta">4</div>
+        <div class="trk-eta-lbl" id="trk-eta-lbl">min</div>
+      </div>
+    </div>
+    <!-- Safety code badge (shown after driver found) -->
+    <div class="safety-code-badge" id="safety-code-badge" hidden>
+      <div style="font-size:22px;">🔐</div>
+      <div class="safety-code-info">
+        <div class="safety-code-lbl" id="safety-code-lbl">Kôd sigurnosti</div>
+        <div class="safety-code-num" id="safety-code-num">----</div>
+        <div class="safety-code-sub" id="safety-code-sub">Pitajte vozača za ovaj broj</div>
+      </div>
+    </div>
+    <button class="btn trip-start" id="trip-start" onclick="startTripLeg('destination')" hidden></button>
+    <div class="trk-actions" id="trk-actions" hidden>
+      <button class="trk-act-btn" onclick="callDriver()">📞 <span id="trk-call-lbl">Pozovi</span></button>
+      <button class="trk-act-btn" onclick="openMsgSheet()">💬 <span id="trk-msg-lbl">Poruka</span></button>
+    </div>
+    <button class="trk-chg-dest" onclick="cancelRide()" id="trk-chg-dest-btn">↩ <span id="trk-chg-lbl">Promijeni destinaciju</span></button>
+    <button class="btn-cancel-trip" onclick="cancelRide()" id="trk-cancel-btn">✕ <span id="trk-cancel-lbl">Otkaži vožnju</span></button>
+  </div>
+</div>
+
+<!-- ─── DRIVER ─── -->
+<div id="s-driver" class="screen out-right">
+  <header class="hdr">
+    <div class="hdr-brand">Voz<em>i</em></div>
+    <div class="hdr-right">
+      <div class="lang-sw">
+        <button class="lang-btn on" onclick="setLang('bs')">BS</button>
+        <button class="lang-btn" onclick="setLang('en')">EN</button>
+        <button class="lang-btn" onclick="setLang('sq')">SQ</button>
+      </div>
+      <button class="icon-btn" onclick="toggleTheme()" id="driver-theme-btn">🌙</button>
+      <div class="av" style="background:#6B3FA0;" onclick="openProfile('driver')" title="Profil">AK</div>
+    </div>
+  </header>
+  <div class="drvr-body">
+    <div class="online-card">
+      <div class="oc-text">
+        <div class="oc-lbl" id="st-lbl">STATUS</div>
+        <div class="oc-val" id="st-val">Van mreže</div>
+      </div>
+      <button class="tog" id="tog" onclick="toggleOnline()"><div class="tog-k"></div></button>
+    </div>
+    <div class="earn-card">
+      <div class="earn-top">
+        <div>
+          <div class="earn-lbl" id="sl-earn">Zarada danas</div>
+          <div class="earn-val" data-bam="87.50">87.50 KM</div>
+          <div class="earn-goal" id="earn-goal">Cilj: 150 KM · <b id="earn-pct-txt">58%</b> ostvareno</div>
+        </div>
+        <div class="earn-pct">58%</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:58%"></div></div>
+      <div class="stat-row">
+        <div class="stat-card"><div class="sv">11</div><div class="sl" id="sl-trips">Vožnje</div></div>
+        <div class="stat-card"><div class="sv">4.9<sub> ⭐</sub></div><div class="sl" id="sl-rate">Ocjena</div></div>
+        <div class="stat-card"><div class="sv">94<sub>km</sub></div><div class="sl" id="sl-km">Pređeno</div></div>
+      </div>
+    </div>
+    <div class="off-card" id="off-hint">
+      <div class="off-ico">🌙</div>
+      <div class="off-title" id="oh-title">Trenutno ste offline</div>
+      <div class="off-sub" id="oh-sub">Uključite se da biste primali zahtjeve za vožnju</div>
+    </div>
+    <div id="req-wrap" style="display:none">
+      <div class="req-card slide-up">
+        <div class="req-head">
+          <div class="req-badge"><div class="req-blink"></div><span id="rb-txt">NOVI ZAHTJEV</span></div>
+          <div class="req-timer" id="req-timer">15</div>
+        </div>
+        <div class="req-body">
+          <div class="req-rider">
+            <div class="req-av">AH</div>
+            <div>
+              <div class="req-name">Amina Husić</div>
+              <div class="req-stars">⭐ 4.8 · <span id="rq-trips">37 vožnji</span></div>
+            </div>
+          </div>
+          <div class="req-route">
+            <div class="rr-item"><div class="rr-dot o"></div>
+              <div><div class="rr-addr" id="rq-from">Ferhadija 12, Sarajevo</div><div class="rr-sub" id="rq-from-d">4 min · 1.2 km od tebe</div></div>
+            </div>
+            <div class="rr-item"><div class="rr-dot d"></div>
+              <div><div class="rr-addr" id="rq-to">Ilidža, Termalna Rivijera</div><div class="rr-sub">22 min · 8.6 km</div></div>
+            </div>
+          </div>
+          <div class="req-chips">
+            <div class="req-chip">💰 <strong data-bam="18.40">18.40 KM</strong></div>
+            <div class="req-chip">🕐 ~26 min</div>
+            <div class="req-chip">📏 8.6 km</div>
+          </div>
+          <div class="req-actions">
+            <button class="btn-dec" id="btn-dec" onclick="decRide()">Odbij</button>
+            <button class="btn-acc" id="btn-acc" onclick="accRide()">✓ <span id="btn-acc-t">Prihvati vožnju</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3 class="sec-ttl" id="recent-ttl">Nedavne vožnje</h3>
+      <div class="trips">
+        <div class="trip"><div class="trip-ic">🏛️</div><div><div class="trip-dest">Vijećnica → Ilidža</div><div class="trip-t" id="tr1-t">Danas, 14:32</div></div><div class="trip-earn" data-bam="12.80">12.80 KM</div></div>
+        <div class="trip"><div class="trip-ic">✈️</div><div><div class="trip-dest">Centar → Aerodrom</div><div class="trip-t" id="tr2-t">Danas, 11:15</div></div><div class="trip-earn" data-bam="24.50">24.50 KM</div></div>
+        <div class="trip"><div class="trip-ic">🕌</div><div><div class="trip-dest">Ilidža → Baščaršija</div><div class="trip-t" id="tr3-t">Danas, 09:48</div></div><div class="trip-earn" data-bam="19.20">19.20 KM</div></div>
+        <div class="trip"><div class="trip-ic">🛍️</div><div><div class="trip-dest">BBI Centar → Stari Grad</div><div class="trip-t" id="tr4-t">Jučer, 18:22</div></div><div class="trip-earn" data-bam="9.40">9.40 KM</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SEARCH OVERLAY ─── -->
+<div class="region-overlay" id="search-overlay" onclick="closeSearchOverlay()">
+  <div class="region-sheet" onclick="event.stopPropagation()" style="padding:0;">
+    <div style="padding:16px 20px 0;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);padding-bottom:14px;">
+      <button onclick="closeSearchOverlay()" style="background:none;border:none;font-size:20px;color:var(--text-2);cursor:pointer;padding:4px;">←</button>
+      <input id="search-inp" type="text" class="sched-input" placeholder="Pretraži odredište..." oninput="filterDests(this.value)" style="flex:1;margin:0;" autocomplete="off">
+    </div>
+    <div id="search-results" style="overflow-y:auto;max-height:60vh;padding:8px 0;"></div>
+  </div>
+</div>
+
+<!-- ─── SCHEDULE OVERLAY ─── -->
+<div class="sched-overlay" id="sched-overlay">
+  <div class="sched-sheet">
+    <div class="sched-handle"></div>
+    <h3 style="font-size:16px;font-weight:800;margin-bottom:16px;" id="sched-ttl">📅 Zakaži vožnju</h3>
+    <label style="font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.5px;" id="sched-date-lbl">Datum i vrijeme</label>
+    <input type="datetime-local" class="sched-input" id="sched-datetime" style="margin-top:6px;margin-bottom:16px;">
+    <label style="font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.5px;" id="sched-dest-lbl">Odredište</label>
+    <div style="background:var(--surface-2);border-radius:var(--r-s);padding:12px;margin-top:6px;margin-bottom:16px;font-size:14px;color:var(--text);" id="sched-dest-show">—</div>
+    <div style="display:flex;gap:10px;">
+      <button onclick="closeSchedSheet()" style="flex:1;padding:14px;background:var(--surface-2);border:1.5px solid var(--border);border-radius:var(--r-s);font-size:14px;font-weight:700;color:var(--text-2);cursor:pointer;" id="sched-cancel-btn">Otkaži</button>
+      <button onclick="confirmSchedule()" style="flex:2;padding:14px;background:var(--primary);border:none;border-radius:var(--r-s);font-size:14px;font-weight:700;color:#fff;cursor:pointer;" id="sched-confirm-btn">✓ Potvrdi raspored</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── REGION OVERLAY ─── -->
+<div class="region-overlay" id="region-overlay" onclick="closeRegionSheet()">
+  <div class="region-sheet" onclick="event.stopPropagation()">
+    <div class="sched-handle"></div>
+    <h3 style="font-size:15px;font-weight:800;margin-bottom:16px;" id="region-ttl">🌍 Odaberi regiju</h3>
+    <div id="region-cards"></div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<script src="vendor/leaflet.js"></script>
+<script>
+/* ─── STATE ─── */
+const S={authenticated:false,currency:'BAM',lang:'bs',role:'rider',regRole:'rider',online:false,dest:null,pulse:0,pDir:1,payMethod:'cash',rideType:'x',tos:false,_carX:0.64,_carY:0.18,_arrived:false,passengers:1,points:23,freeRides:3,rideHistory:[],safetyCode:null,region:'ba',scheduledAt:null};
+
+/* ─── TRANSLATIONS ─── */
+const TX={
+  tagline:{bs:'Vaša vožnja u jednom dodiru',en:'Your ride, one touch away',sq:'Udhëtimi juaj me një prekje'},
+  forg:{bs:'Zaboravili ste lozinku?',en:'Forgot password?',sq:'Keni harruar fjalëkalimin?'},
+  'as-lbl':{bs:'Nastavi kao:',en:'Continue as:',sq:'Vazhdo si:'},
+  'ras-lbl':{bs:'Registruj se kao:',en:'Register as:',sq:'Regjistrohu si:'},
+  'rl-putnik':{bs:'Putnik',en:'Rider',sq:'Pasagjer'},
+  'rd-naruci':{bs:'Naruči vožnju',en:'Book a ride',sq:'Rezervo një udhëtim'},
+  'rl-vozac':{bs:'Vozač',en:'Driver',sq:'Shofer'},
+  'rd-zaradi':{bs:'Zaradite vožnjom',en:'Earn by driving',sq:'Fitoni duke drejtuar'},
+  'btn-sign':{bs:'Prijavi se →',en:'Sign In →',sq:'Hyr →'},
+  'btn-reg':{bs:'Kreiraj nalog →',en:'Create Account →',sq:'Krijo llogari →'},
+  'no-acc':{bs:'Nemate nalog? ',en:"Don't have an account? "},
+  'go-reg':{bs:'Registrujte se',en:'Register',sq:'Regjistrohu'},
+  'has-acc':{bs:'Već imate nalog? ',en:'Already have an account? ',sq:'Keni tashmë llogari? '},
+  'go-in':{bs:'Prijavite se',en:'Sign in',sq:'Hyni'},
+  'or-lbl':{bs:'ili',en:'or',sq:'ose'},
+  'google-lbl':{bs:'Nastavi s Google',en:'Continue with Google',sq:'Vazhdo me Google'},
+  'lbl-email-in':{bs:'E-mail adresa',en:'Email address',sq:'Adresa e-mail'},
+  'lbl-pw-in':{bs:'Lozinka',en:'Password',sq:'Fjalëkalimi'},
+  'lbl-email-reg':{bs:'E-mail adresa',en:'Email address',sq:'Adresa e-mail'},
+  'lbl-fname':{bs:'Ime',en:'First name',sq:'Emri'},
+  'lbl-lname':{bs:'Prezime',en:'Last name',sq:'Mbiemri'},
+  'lbl-phone':{bs:'Broj telefona',en:'Phone number',sq:'Numri i telefonit'},
+  'lbl-pw-reg':{bs:'Lozinka',en:'Password',sq:'Fjalëkalimi'},
+  'lbl-pw-confirm':{bs:'Potvrdi lozinku',en:'Confirm password',sq:'Konfirmo fjalëkalimin'},
+  'tos-txt':{bs:'Prihvatam Uvjete korištenja i Politiku privatnosti platforme Vozi.',en:'I accept the Terms of Service and Privacy Policy of Vozi.',sq:'Pranoj Kushtet e Shërbimit dhe Politikën e Privatësisë të Vozi.'},
+  'tos-link':{bs:'Uvjete korištenja',en:'Terms of Service',sq:'Kushtet e Shërbimit'},
+  'policy-link':{bs:'Politiku privatnosti',en:'Privacy Policy',sq:'Politikën e Privatësisë'},
+  'tfa-back-lbl':{bs:'Nazad',en:'Back',sq:'Kthehu'},
+  'tfa-title':{bs:'Provjera identiteta',en:'Verify your identity',sq:'Verifikoni identitetin'},
+  'tfa-sub':{bs:'Demo provjera — SMS nije poslan.',en:'Demo verification — no SMS was sent.',sq:'Verifikim demo — nuk u dërgua SMS.'},
+  'tfa-hint':{bs:'Niste primili kod? ',en:"Didn't receive the code? "},
+  'tfa-resend':{bs:'Pošalji ponovo',en:'Resend',sq:'Dërgo përsëri'},
+  'tfa-alt':{bs:'Demo: unesite bilo koji 6 cifara',en:'Demo: enter any 6 digits',sq:'Demo: shkruani çdo 6 shifra'},
+  'tfa-skip-btn':{bs:'Preskoči →',en:'Skip →',sq:'Kalo →'},
+  'map-lbl-where':{bs:'KAMO IDETE?',en:'WHERE TO?',sq:'KU PO SHKONI?'},
+  'map-sbar-ph':{bs:'Unesite odredište…',en:'Enter destination…',sq:'Shkruani destinacionin…'},
+  'dt-where':{bs:'Kamo idete?',en:'Where to?',sq:'Ku po shkoni?'},
+  'lbl-pickup':{bs:'POLAZIŠTE',en:'PICKUP',sq:'NISJA'},
+  'pickup-val':{bs:'Vaša lokacija (GPS)',en:'Your location (GPS)',sq:'Vendndodhja juaj (GPS)'},
+  'lbl-dest':{bs:'ODREDIŠTE',en:'DESTINATION',sq:'DESTINACIONI'},
+  'dest-ph':{bs:'Unesite odredište...',en:'Enter destination...',sq:'Shkruani destinacionin...'},
+  'quick-lbl':{bs:'BRZI IZBOR',en:'QUICK SELECT',sq:'ZGJEDHJE E SHPEJTË'},
+  'rt-title':{bs:'Odaberi vožnju',en:'Choose a ride',sq:'Zgjidhni udhëtimin'},
+  'btn-conf-txt':{bs:'Naruči vožnju',en:'Book Ride',sq:'Rezervo udhëtimin'},
+  'btn-cancel-txt':{bs:'Otkaži',en:'Cancel',sq:'Anulo'},
+  'rt-chg-btn':{bs:'Promijeni',en:'Change',sq:'Ndrysho'},
+  'pm-chg':{bs:'Promijeni',en:'Change',sq:'Ndrysho'},
+  'pay-ttl':{bs:'Metode plaćanja',en:'Payment methods',sq:'Metodat e pagesës'},
+  'po-cash-name':{bs:'Gotovina',en:'Cash',sq:'Para në dorë'},
+  'po-cash-desc':{bs:'Plaćanje vozaču',en:'Pay driver directly',sq:'Paguaj shoferit'},
+  'po-card-name':{bs:'Banka kartica',en:'Bank card',sq:'Kartë bankare'},
+  'po-wallet-name':{bs:'Vozi Novčanik',en:'Vozi Wallet',sq:'Portofol Vozi'},
+  'policy-ttl-txt':{bs:'Politika povrata',en:'Refund policy',sq:'Politika e rimbursimit'},
+  'policy-body-txt':{bs:'Otkazivanje unutar 2 minute je besplatno. Nakon toga, naplaćuje se naknada od 1.50 KM. Povrat sredstava na karticu procesira se u roku od 3–5 radnih dana.',en:'Cancellation within 2 minutes is free. After that, a 1.50 KM fee applies. Card refunds are processed within 3–5 business days.',sq:'Anulimi brenda 2 minutash është falas. Pas kësaj, aplikohet një tarifë prej 1.50 KM. Rimbursimet në kartë procesohen brenda 3–5 ditëve të punës.'},
+  'policy-more':{bs:'Pogledaj kompletnu politiku →',en:'View full policy →',sq:'Shiko politikën e plotë →'},
+  'st-lbl':{bs:'STATUS',en:'STATUS',sq:'STATUSI'},
+  'sl-earn':{bs:'Zarada danas',en:"Today's earnings"},
+  'earn-goal':{bs:'Cilj: 150 KM · ',en:'Goal: 150 KM · ',sq:'Objektiv: 150 KM · '},
+  'sl-trips':{bs:'Vožnje',en:'Trips',sq:'Udhëtime'},
+  'sl-rate':{bs:'Ocjena',en:'Rating',sq:'Vlerësimi'},
+  'sl-km':{bs:'Pređeno',en:'Distance',sq:'Distanca'},
+  'oh-title':{bs:'Trenutno ste offline',en:"You're offline"},
+  'oh-sub':{bs:'Uključite se da biste primali zahtjeve za vožnju',en:'Go online to start receiving ride requests',sq:'Hyni online për të marrë kërkesa udhëtimi'},
+  'rb-txt':{bs:'NOVI ZAHTJEV',en:'NEW REQUEST',sq:'KËRKESË E RE'},
+  'rq-trips':{bs:'37 vožnji',en:'37 trips',sq:'37 udhëtime'},
+  'rq-from':{bs:'Ferhadija 12, Sarajevo',en:'Ferhadija 12, Sarajevo',sq:'Ferhadija 12, Sarajevë'},
+  'rq-from-d':{bs:'4 min · 1.2 km od tebe',en:'4 min · 1.2 km from you',sq:'4 min · 1.2 km prej jush'},
+  'rq-to':{bs:'Ilidža, Termalna Rivijera',en:'Ilidža, Thermal Spa',sq:'Ilidža, Riviera Termale'},
+  'btn-dec':{bs:'Odbij',en:'Decline',sq:'Refuzo'},
+  'btn-acc-t':{bs:'Prihvati vožnju',en:'Accept Ride',sq:'Prano udhëtimin'},
+  'recent-ttl':{bs:'Nedavne vožnje',en:'Recent trips',sq:'Udhëtimet e fundit'},
+  'tr1-t':{bs:'Danas, 14:32',en:'Today, 2:32 PM',sq:'Sot, 14:32'},
+  'tr2-t':{bs:'Danas, 11:15',en:'Today, 11:15 AM',sq:'Sot, 11:15'},
+  'tr3-t':{bs:'Danas, 09:48',en:'Today, 9:48 AM',sq:'Sot, 09:48'},
+  'tr4-t':{bs:'Jučer, 18:22',en:'Yesterday, 6:22 PM',sq:'Dje, 18:22'},
+  'ph-ttl':{bs:'Moj profil',en:'My profile',sq:'Profili im'},
+  'ps-trips-l':{bs:'Vožnje',en:'Trips',sq:'Udhëtime'},
+  'ps-stars-l':{bs:'Ocjena',en:'Rating',sq:'Vlerësimi'},
+  'ps-year-l':{bs:'Član od',en:'Since',sq:'Anëtar nga'},
+  'pr-phone-l':{bs:'Telefon',en:'Phone',sq:'Telefon'},
+  'pr-city-l':{bs:'Grad',en:'City',sq:'Qyteti'},
+  'pr-2fa-l':{bs:'Dvofaktorska zaštita',en:'Two-factor auth',sq:'Autentifikim dy-faktorësh'},
+  'pmi-edit':{bs:'Uredi profil',en:'Edit profile',sq:'Ndrysho profilin'},
+  'pmi-pay':{bs:'Metode plaćanja',en:'Payment methods',sq:'Metodat e pagesës'},
+  'pmi-tos':{bs:'Uvjeti korištenja',en:'Terms of Service',sq:'Kushtet e shërbimit'},
+  'pmi-policy':{bs:'Politika povrata sredstava',en:'Refund policy',sq:'Politika e rimbursimit'},
+  'pmi-theme':{bs:'Tamni način rada',en:'Dark mode',sq:'Modaliteti i errët'},
+  'logout-lbl':{bs:'Odjavi se',en:'Log out',sq:'Dil'},
+  'modal-close-btn':{bs:'Zatvori',en:'Close',sq:'Mbyll'},
+  /* toasts */
+  'loc-center':{bs:'Centriranje na vašu lokaciju…',en:'Centering on your location…',sq:'Po centron në vendndodhjen tuaj…'},
+  't-online':{bs:'Online! Čekamo zahtjeve…',en:'Online! Waiting for requests…',sq:'Online! Duke pritur kërkesa…'},
+  't-offline':{bs:'Sada ste offline.',en:"You're now offline."},
+  't-declined':{bs:'Vožnja odbijena.',en:'Ride declined.',sq:'Udhëtimi refuzuar.'},
+  't-accepted':{bs:'✅ Vožnja prihvaćena!',en:'✅ Ride accepted!',sq:'✅ Udhëtimi pranuar!'},
+  't-booked':{bs:'🚗 Vozač pronađen! Dolazi za 4 min.',en:'🚗 Driver found! Arriving in 4 min.',sq:'🚗 Shofer gjetur! Vjen për 4 min.'},
+  't-cancelled':{bs:'🚫 Vožnja otkazana',en:'🚫 Ride cancelled',sq:'🚫 Udhëtimi u anulua'},
+  'trk-search-lbl':{bs:'Tražimo vozača...',en:'Looking for a driver...',sq:'Po kërkojmë shofer...'},
+  'trk-status-lbl-wait':{bs:'Tražimo vozača...',en:'Looking for driver...',sq:'Po kërkojmë shofer...'},
+  'trk-status-sub-wait':{bs:'Molimo sačekajte trenutak',en:'Please wait a moment',sq:'Ju lutemi prisni një moment'},
+  'trk-status-lbl-found':{bs:'Vozač pronađen! 🎉',en:'Driver found! 🎉',sq:'Shofer gjetur! 🎉'},
+  'trk-status-sub-found':{bs:'Dolazi za 4 minute',en:'Arriving in 4 minutes',sq:'Vjen për 4 minuta'},
+  'trk-status-lbl-arrived':{bs:'Vozač je stigao! 🙌',en:'Driver has arrived! 🙌',sq:'Shofer ka mbërritur! 🙌'},
+  'trk-status-sub-arrived':{bs:'Čeka vas ispred vrata',en:'Waiting outside for you',sq:'Po ju pret jashtë'},
+  't-arrived':{bs:'🚗 Vozač je stigao! Čeka vas ispred.',en:'🚗 Driver has arrived! Waiting outside.',sq:'🚗 Shofer mbërriti! Po ju pret jashtë.'},
+  'trk-end-ride':{bs:'Završi vožnju',en:'End ride',sq:'Përfundo udhëtimin'},
+  'trk-cancel-lbl':{bs:'Otkaži vožnju',en:'Cancel ride',sq:'Anulo udhëtimin'},
+  'trk-call-lbl':{bs:'Pozovi',en:'Call',sq:'Thirr'},
+  'trk-msg-lbl':{bs:'Poruka',en:'Message',sq:'Mesazh'},
+  'trk-chg-lbl':{bs:'Promijeni destinaciju',en:'Change destination',sq:'Ndrysho destinacionin'},
+  't-calling':{bs:'📞 Pozivanje vozača...',en:'📞 Calling driver...',sq:'📞 Po thërritet shofer...'},
+  't-edit':{bs:'Uređivanje profila uskoro…',en:'Profile editing coming soon…',sq:'Redaktimi i profilit së shpejti…'},
+  't-forgot':{bs:'Link za reset lozinke poslan na e-mail.',en:'Password reset link sent to your email.',sq:'Linku i rivendosjes dërguar në e-mail.'},
+  't-google':{bs:'Google prijava uskoro…',en:'Google sign-in coming soon…',sq:'Hyrja me Google së shpejti…'},
+  't-resend':{bs:'Novi kod poslan!',en:'New code sent!',sq:'Kod i ri dërguar!'},
+  't-search':{bs:'Pretraga lokacija uskoro…',en:'Location search coming soon…',sq:'Kërkimi i lokacioneve së shpejti…'},
+  't-pay-changed':{bs:'Metoda plaćanja promijenjena.',en:'Payment method changed.',sq:'Metoda e pagesës ndryshuar.'},
+  'rtn-x':{bs:'VoziX',en:'VoziX',sq:'VoziX'},
+  'rtb-x':{bs:'Preporučeno',en:'Recommended',sq:'E rekomanduar'},
+  'rtd-x':{bs:'Standardna vožnja · do 4 osobe',en:'Standard · up to 4 passengers',sq:'Standard · deri në 4 pasagjerë'},
+  'rte-x':{bs:'🕐 3 min · 2 vozača u blizini',en:'🕐 3 min · 2 drivers nearby',sq:'🕐 3 min · 2 shoferë afër'},
+  'rtn-c':{bs:'VoziComfort',en:'VoziComfort',sq:'VoziComfort'},
+  'rtd-c':{bs:'Udobnija vožnja · noviji automobil',en:'Comfortable ride · newer car',sq:'Udhëtim i rehatshëm · makinë e re'},
+  'rte-c':{bs:'🕐 5 min · 1 vozač u blizini',en:'🕐 5 min · 1 driver nearby',sq:'🕐 5 min · 1 shofer afër'},
+  'rtn-xl':{bs:'VoziXL',en:'VoziXL',sq:'VoziXL'},
+  'rtd-xl':{bs:'Kombi · do 6 osoba',en:'Van · up to 6 passengers',sq:'Van · deri në 6 pasagjerë'},
+  'rte-xl':{bs:'🕐 7 min · 1 vozač u blizini',en:'🕐 7 min · 1 driver nearby',sq:'🕐 7 min · 1 shofer afër'},
+  'rt-from-txt':{bs:'Vaša lokacija',en:'Your location',sq:'Vendndodhja juaj'},
+  'earn-pct-txt':{bs:'58% ostvareno',en:'58% achieved',sq:'58% e arritur'},
+};
+function T(k){return(TX[k]||{})[S.lang]||(TX[k]||{}).bs||k;}
+
+/* ─── LANGUAGE ─── */
+function setLang(lang){
+  S.lang=lang;document.documentElement.lang=lang;
+  document.querySelectorAll('.lang-btn').forEach(b=>{
+    b.classList.toggle('on',b.textContent.trim().toLowerCase()===lang);
+  });
+  Object.keys(TX).forEach(id=>{
+    const el=document.getElementById(id);
+    if(el&&TX[id][lang]!==undefined)el.textContent=TX[id][lang];
+  });
+  const ti=document.getElementById('tab-in');
+  const tr=document.getElementById('tab-reg');
+  if(ti)ti.textContent=lang==='en'?'Sign In':lang==='sq'?'Hyr':'Prijava';
+  if(tr)tr.textContent=lang==='en'?'Register':lang==='sq'?'Regjistrohu':'Registracija';
+  const sv=document.getElementById('st-val');
+  if(sv)sv.textContent=S.online?(lang==='en'?'Available ✓':lang==='sq'?'Disponibël ✓':'Dostupan ✓'):(lang==='en'?'Offline':lang==='sq'?'Offline':'Van mreže');
+  /* tos special case: has links inside */
+  const tosEl=document.getElementById('tos-txt');
+  if(tosEl){
+    const tosLink=lang==='en'?'Terms of Service':lang==='sq'?'Kushtet e Shërbimit':'Uvjete korištenja';
+    const polLink=lang==='en'?'Privacy Policy':lang==='sq'?'Politikën e Privatësisë':'Politiku privatnosti';
+    const pre=lang==='en'?'I accept the ':lang==='sq'?'Pranoj ':'Prihvatam ';
+    const mid=lang==='en'?' and the ':lang==='sq'?' dhe ':' i ';
+    const post=lang==='en'?' of Vozi.':lang==='sq'?' të Vozi.':' platforme Vozi.';
+    tosEl.innerHTML=`${pre}<a href="#" onclick="openModal('tos');return false">${tosLink}</a>${mid}<a href="#" onclick="openModal('policy');return false">${polLink}</a>${post}`;
+  }
+  renderMoney();
+}
+
+/* ─── THEME ─── */
+function isDark(){
+  const t=document.documentElement.getAttribute('data-theme');
+  return t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches);
+}
+function applyThemeIcons(){
+  const dk=isDark();
+  const icon=dk?'☀️':'🌙';
+  ['auth-theme-btn','rider-theme-btn','driver-theme-btn'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.textContent=icon;
+  });
+  const pmi=document.getElementById('theme-pmi-ic');
+  if(pmi)pmi.textContent=icon;
+  const pmiLbl=document.getElementById('pmi-theme');
+  if(pmiLbl)pmiLbl.textContent=T(dk?'pmi-theme-off':'pmi-theme');
+  if(trkMap)applyMapTheme(trkMap);
+}
+function toggleTheme(){
+  const dk=isDark();
+  document.documentElement.setAttribute('data-theme',dk?'light':'dark');
+  applyThemeIcons();
+  // Re-apply dark/light filter to all active maps
+  [mainMap,rtMap,trkMap].forEach(applyMapTheme);
+}
+function toggleThemeFromProfile(){toggleTheme();}
+window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',applyThemeIcons);
+
+/* ─── AUTH ─── */
+function authTab(t){
+  const isIn=t==='in';
+  document.getElementById('tab-in').classList.toggle('on',isIn);
+  document.getElementById('tab-reg').classList.toggle('on',!isIn);
+  document.getElementById('f-in').style.display=isIn?'flex':'none';
+  document.getElementById('f-reg').style.display=isIn?'none':'flex';
+}
+function pickRole(r){
+  S.role=r;
+  document.getElementById('r-rider').classList.toggle('on',r==='rider');
+  document.getElementById('r-driver').classList.toggle('on',r==='driver');
+}
+function pickRegRole(r){
+  S.regRole=r;
+  document.getElementById('rr-rider').classList.toggle('on',r==='rider');
+  document.getElementById('rr-driver').classList.toggle('on',r==='driver');
+  const dds=document.getElementById('driver-docs-section');
+  if(dds){dds.style.display=r==='driver'?'flex':'none';}
+}
+function togglePw(id,btn){
+  const inp=document.getElementById(id);
+  const show=inp.type==='password';
+  inp.type=show?'text':'password';
+  btn.textContent=show?'🙈':'👁';
+}
+function toggleTos(){
+  S.tos=!S.tos;
+  document.getElementById('tos-check').classList.toggle('on',S.tos);
+}
+let authEpoch=0,otpTimer=null;
+function doLogin(){
+  authEpoch++;clearTimeout(otpTimer);
+  const role=S.role;
+  // Simulate 2FA step
+  goTo('s-2fa');
+  const phone=document.getElementById('tfa-phone-show');if(phone)phone.textContent='+387 61 ••• 567';
+  // Store pending role
+  S._pendingRole=role;
+}
+function doRegister(){
+  authEpoch++;clearTimeout(otpTimer);
+  if(!S.tos){showToast(S.lang==='en'?'Please accept the Terms of Service.':S.lang==='sq'?'Ju lutemi pranoni Kushtet e Shërbimit.':'Molimo prihvatite Uvjete korištenja.');return;}
+  S._pendingRole=S.regRole;
+  goTo('s-2fa');
+}
+function enterApp(){
+  if(!S._pendingRole||!document.getElementById('s-2fa').classList.contains('active'))return;
+  clearTimeout(otpTimer);S.authenticated=true;
+  const role=S._pendingRole||S.role;
+  S.role=role;
+  if(role==='driver'){goTo('s-driver');}
+  else{goTo('s-rider');setTimeout(initMap,340);}
+}
+
+/* ─── OTP ─── */
+function otpNext(el,idx){
+  el.value=el.value.replace(/\D/,'');
+  if(el.value&&idx<5){document.getElementById('otp'+(idx+1)).focus();}
+  const all=[...Array(6)].map((_,i)=>document.getElementById('otp'+i).value).join('');
+  clearTimeout(otpTimer);
+  if(all.length===6){const epoch=authEpoch;otpTimer=setTimeout(()=>{if(epoch===authEpoch)enterApp();},400);}
+}
+function otpBack(e,idx){
+  if(e.key==='Backspace'&&!e.target.value&&idx>0){
+    document.getElementById('otp'+(idx-1)).focus();
+  }
+}
+
+/* ─── SCREEN NAV ─── */
+function goTo(id){
+  if(!S.authenticated&&!['s-auth','s-2fa'].includes(id))id='s-auth';
+  const cur=document.querySelector('.screen.active');
+  const nxt=document.getElementById(id);
+  if(!nxt||cur===nxt)return;
+  if(cur){cur.classList.remove('active');cur.classList.add('out-left');}
+  nxt.classList.remove('out-left','out-right');nxt.classList.add('active');
+  if(cur)setTimeout(()=>{if(!cur.classList.contains('active')){cur.classList.remove('out-left');cur.classList.add('out-right');}},360);
+  if(id==='s-rider'){setTimeout(()=>{forceMapSize();if(mainMap)mainMap.invalidateSize();},380);}
+  if(id==='s-ridetype'){setTimeout(()=>{forceRtMapSize();if(rtMap)rtMap.invalidateSize();},380);}
+  if(id==='s-tracking'){setTimeout(()=>{forceTrkMapSize();},380);}
+  if(id==='s-2fa'){
+    // clear old values and focus first box
+    for(let i=0;i<6;i++){const b=document.getElementById('otp'+i);if(b)b.value='';}
+    setTimeout(()=>{const b=document.getElementById('otp0');if(b)b.focus();},380);
+  }
+}
+
+/* ─── REGION / DRIVER DATA ─── */
+const REGIONS=[
+  {code:'ba',flag:'🇧🇦',name:'Bosna i Hercegovina',sub:'KM · Bosnia'},
+  {code:'hr',flag:'🇭🇷',name:'Hrvatska',sub:'EUR · Croatia'},
+  {code:'rs',flag:'🇷🇸',name:'Srbija',sub:'RSD · Serbia'},
+  {code:'me',flag:'🇲🇪',name:'Crna Gora',sub:'EUR · Montenegro'},
+  {code:'mk',flag:'🇲🇰',name:'Sj. Makedonija',sub:'MKD · N. Macedonia'},
+  {code:'al',flag:'🇦🇱',name:'Shqipëria',sub:'ALL · Albania'},
+  {code:'xk',flag:'🇽🇰',name:'Kosova',sub:'EUR · Kosovo'},
+  {code:'tr',flag:'🇹🇷',name:'Türkiye',sub:'TRY · Turkey'},
+];
+// Currency selection is independent of the map region; fares are stored in BAM.
+const REGION_CENTER={
+  ba:[43.8563,18.4131],hr:[45.8150,15.9819],rs:[44.8176,20.4569],me:[42.4304,19.2594],
+  mk:[41.9981,21.4254],al:[41.3275,19.8187],xk:[42.6629,21.1655],tr:[39.9334,32.8597]
+};
+const DRIVERS=[
+  {emoji:'🧔',color:'#1A56F0',initials:'MK',name:'Muamer Kovač',car:'VW Golf · BA 234-K',stars:'4.9',trips:847,bio:'15+ godina iskustva. Sarajevo mi je dom — znam svaku ulicu.',lang:'BS/EN',verified:true},
+  {emoji:'👨‍💼',color:'#6B3FA0',initials:'AB',name:'Amir Begić',car:'BMW 3 Series · BA 789-A',stars:'4.8',trips:1203,bio:'Bivši pilot. Tačnost i sigurnost su moj prioritet. Uvijek na vrijeme.',lang:'BS/EN/DE',verified:true},
+  {emoji:'👩',color:'#E91E8C',initials:'LH',name:'Lejla Hadžić',car:'Toyota Corolla · SA 441-L',stars:'5.0',trips:634,bio:'Volim muziku i dobro raspoloženje u autu. Uvijek čisto! 🎵',lang:'BS/EN/TR',verified:true},
+  {emoji:'🧑',color:'#00897B',initials:'NS',name:'Nedim Salković',car:'Škoda Octavia · BA 102-N',stars:'4.7',trips:428,bio:'Radim u Sarajevu 5 godina. Brz, pouzdan, friendly. Djeca dobrodošla.',lang:'BS/EN',verified:true},
+  {emoji:'👨',color:'#F57C00',initials:'DK',name:'Dragan Kovačević',car:'Opel Astra · SA 551-D',stars:'4.8',trips:392,bio:'Beograd–Sarajevo ruta specijalist. Klimatiziran auto, tihi vozač.',lang:'BS/SR/EN',verified:true},
+  {emoji:'👩‍💼',color:'#C62828',initials:'MH',name:'Marta Horváth',car:'Renault Clio · ZG 882-M',stars:'4.9',trips:567,bio:'Zagreb lokalna stručnjakinja. Glazba po vašem ukusu! 🎶',lang:'HR/EN/HU',verified:true},
+  {emoji:'🧔‍♂️',color:'#2E7D32',initials:'KY',name:'Kemal Yıldız',car:'Ford Focus · 34 ABC 567',stars:'4.8',trips:923,bio:'İstanbul uzmanı. Trafiği iyi bilirim, kısa yoldan gideriz.',lang:'TR/EN',verified:true},
+  {emoji:'👨‍🦱',color:'#1565C0',initials:'NP',name:'Nikola Petrov',car:'Kia Sportage · CB 445-N',stars:'4.7',trips:311,bio:'Sofia şehri turu. Güvenli ve konforlu sürüş garantisi.',lang:'BG/EN/RS',verified:true},
+];
+const DEST_LIST=[
+  {icon:'🕌',name:'Baščaršija',addr:'Stari Grad, Sarajevo',price:8.5,mins:14,km:2.1},
+  {icon:'🏛️',name:'Vijećnica',addr:'Obala Kulina bana',price:9.2,mins:16,km:2.4},
+  {icon:'✈️',name:'Aerodrom Sarajevo',addr:'Kurta Schorka 36, Ilidža',price:24.8,mins:28,km:11.3},
+  {icon:'🛍️',name:'BBI Centar',addr:'Trg djece Sarajeva bb',price:11.4,mins:20,km:3.8},
+  {icon:'🏟️',name:'Skenderija',addr:'Terezija, Sarajevo',price:6.8,mins:11,km:1.6},
+  {icon:'🏫',name:'Univerzitet Sarajevo',addr:'Obala Kulina bana 7',price:7.2,mins:12,km:1.8},
+  {icon:'🏥',name:'KCUS Bolnica',addr:'Bolnička 25, Sarajevo',price:10.1,mins:17,km:3.2},
+  {icon:'🛒',name:'Alta Shopping',addr:'Bulevar Meše Selimovića',price:13.5,mins:22,km:5.1},
+  {icon:'⚽',name:'Stadion Koševo',addr:'Ferhadija, Sarajevo',price:8.9,mins:15,km:2.7},
+  {icon:'🌊',name:'Termalna Rivijera',addr:'Ilidža, Sarajevo',price:19.0,mins:26,km:8.6},
+];
+
+/* ─── LEAFLET MAPS ─── */
+let mainMap=null,rtMap=null,trkMap=null;
+let trkCarMarker=null,trkUserMarker=null,trkLine=null;
+let USER_LAT=43.8590,USER_LNG=18.4320;
+function getTiles(){
+  // OpenStreetMap — free, no API key required
+  return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+}
+function applyMapTheme(map){
+  if(!map)return;
+  // In dark mode, invert + hue-rotate the OSM tiles for a dark look
+  const dk=isDark();
+  const pane=map.getPane('tilePane');
+  if(pane){
+    pane.style.filter=dk?'invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9)':'';
+  }
+}
+function makeUserIcon(){
+  return L.divIcon({
+    className:'',
+    html:`<div style="width:18px;height:18px;background:#FFBE00;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 4px rgba(255,190,0,.3);"></div>`,
+    iconSize:[18,18],iconAnchor:[9,9]
+  });
+}
+function makeCarIcon(emoji){
+  return L.divIcon({
+    className:'',
+    html:`<div style="font-size:24px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3));">${emoji||'🚗'}</div>`,
+    iconSize:[30,30],iconAnchor:[15,15]
+  });
+}
+function forceMapSize(){
+  /* Measure actual DOM dimensions and pin explicit pixel values directly
+     on map-wrap AND #map-leaflet so Leaflet always sees a non-zero container. */
+  const scr=document.getElementById('s-rider');
+  const wrap=document.querySelector('#s-rider .map-wrap');
+  const el=document.getElementById('map-leaflet');
+  if(!scr||!wrap)return;
+  const hdr=scr.querySelector('.hdr');
+  const hdrH=hdr?hdr.offsetHeight:0;
+  const scrH=scr.offsetHeight||window.innerHeight;
+  const scrW=scr.offsetWidth||window.innerWidth;
+  const h=Math.max(300,scrH-hdrH);
+  const w=window.innerWidth>=768?Math.max(300,scrW-380):scrW;
+  wrap.style.height=h+'px';
+  wrap.style.width=w+'px';
+  wrap.style.flexShrink='0';
+  if(el){el.style.width=w+'px';el.style.height=h+'px';}
+}
+function forceRtMapSize(){
+  const wrap=document.querySelector('#s-ridetype .rt-map');
+  const el=document.getElementById('rt-leaflet');
+  if(!wrap||!el)return;
+  // Use window dimensions — screen is full-viewport; offsetHeight may be 0 during transitions
+  const isDesktop=window.innerWidth>=768;
+  const h=isDesktop?window.innerHeight:190;
+  const w=isDesktop?Math.max(200,window.innerWidth-420):window.innerWidth;
+  wrap.style.height=h+'px';
+  wrap.style.width=w+'px';
+  el.style.width=w+'px';
+  el.style.height=h+'px';
+}
+function forceTrkMapSize(){if(trkMap)trkMap.invalidateSize({pan:false});}
+function initMap(){
+  if(mainMap)return;
+  const el=document.getElementById('map-leaflet');
+  if(!el)return;
+  forceMapSize(); // pin explicit pixel dimensions BEFORE Leaflet reads them
+  mainMap=L.map('map-leaflet',{zoomControl:false}).setView([USER_LAT,USER_LNG],14);
+  L.tileLayer(getTiles(),{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(mainMap);
+  L.marker([USER_LAT,USER_LNG],{icon:makeUserIcon()}).addTo(mainMap);
+  applyMapTheme(mainMap);
+  [200,500,1000].forEach(t=>setTimeout(()=>{
+    forceMapSize();
+    if(mainMap)mainMap.invalidateSize();
+  },t));
+}
+function centerMap(){if(mainMap)mainMap.setView([USER_LAT,USER_LNG],14,{animate:true});}
+function initRtMap(){
+  const el=document.getElementById('rt-leaflet');
+  if(!el)return;
+  if(rtMap){forceRtMapSize();rtMap.invalidateSize();return;}
+  forceRtMapSize();
+  rtMap=L.map('rt-leaflet',{zoomControl:false,dragging:false,scrollWheelZoom:false,touchZoom:false,doubleClickZoom:false}).setView([USER_LAT,USER_LNG],13);
+  L.tileLayer(getTiles(),{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(rtMap);
+  applyMapTheme(rtMap);
+  L.marker([USER_LAT,USER_LNG],{icon:makeUserIcon()}).addTo(rtMap);
+  if(S._destCoords){
+    L.marker(S._destCoords,{icon:L.divIcon({className:'',html:'<div style="width:14px;height:14px;background:var(--primary);border:2px solid #fff;border-radius:50%;"></div>',iconSize:[14,14],iconAnchor:[7,7]})}).addTo(rtMap);
+    L.polyline([[USER_LAT,USER_LNG],S._destCoords],{color:'#1A56F0',weight:3,dashArray:'6 5',opacity:.7}).addTo(rtMap);
+  }
+  [100,300,700].forEach(t=>setTimeout(()=>{forceRtMapSize();if(rtMap)rtMap.invalidateSize();},t));
+}
+/* A street route demo. Real GPS can be supplied through VoziTracking. */
+const TRIP_DESTINATIONS=[
+ [43.8590,18.4280],[43.8591,18.4335],[43.8246,18.3315],[43.8580,18.4130],
+ [43.8518,18.4138],[43.8560,18.3980],[43.8720,18.4160],[43.8550,18.4010],
+ [43.8736,18.4086],[43.8290,18.3060]
+];
+const Trip={id:0,active:false,mode:'demo',phase:'searching',route:null,position:null,
+ raf:0,liveRaf:0,request:0,controller:null,timers:[],follow:true,lastGPS:0,lastFrame:0,elapsed:0,travelled:0};
+function tripText(bs,en,sq){return S.lang==='en'?en:S.lang==='sq'?sq:bs;}
+function tripNotice(text){document.getElementById('trip-notice').textContent=text;}
+function tripCarIcon(){
+ return L.divIcon({className:'',iconSize:[28,44],iconAnchor:[14,22],html:`<div class="trip-car"><svg viewBox="0 0 28 44" aria-label="Car"><rect x="3" y="1" width="22" height="42" rx="7" fill="#182232" stroke="white" stroke-width="2"/><path d="M7 11h14l-2 8H9zM9 29h10l2 6H7z" fill="#a5d9ef"/><rect x="6" y="3" width="5" height="3" rx="1" fill="#fff"/><rect x="17" y="3" width="5" height="3" rx="1" fill="#fff"/><rect x="6" y="38" width="5" height="3" fill="#ef4444"/><rect x="17" y="38" width="5" height="3" fill="#ef4444"/></svg></div>`});
+}
+function distanceMeters(a,b){
+ const rad=Math.PI/180,dLat=(b[0]-a[0])*rad,dLng=(b[1]-a[1])*rad;
+ const h=Math.sin(dLat/2)**2+Math.cos(a[0]*rad)*Math.cos(b[0]*rad)*Math.sin(dLng/2)**2;
+ return 6371000*2*Math.atan2(Math.sqrt(h),Math.sqrt(Math.max(0,1-h)));
+}
+function buildTripRoute(data){
+ const points=data.geometry.coordinates.map(p=>[p[1],p[0]]),cumulative=[0];
+ for(let i=1;i<points.length;i++)cumulative.push(cumulative[i-1]+distanceMeters(points[i-1],points[i]));
+ if(points.length<2||!Number.isFinite(data.duration)||data.duration<=0||cumulative.at(-1)<=0)throw Error('No drivable route');
+ return {points,cumulative,length:cumulative.at(-1),duration:data.duration};
+}
+function routePosition(route,meters){
+ const d=Math.max(0,Math.min(route.length,meters));let i=1;
+ while(i<route.points.length-1&&route.cumulative[i]<d)i++;
+ const a=route.points[i-1],b=route.points[i],span=route.cumulative[i]-route.cumulative[i-1];
+ const f=span?(d-route.cumulative[i-1])/span:0;
+ return {point:[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f],index:i,
+ heading:Math.atan2((b[1]-a[1])*Math.cos(a[0]*Math.PI/180),b[0]-a[0])*180/Math.PI};
+}
+function fitTripRoute(){Trip.follow=false;if(trkMap&&Trip.route)trkMap.fitBounds(L.latLngBounds(Trip.route.points),{padding:[55,70],maxZoom:16});}
+function followTrip(){Trip.follow=true;if(trkMap&&Trip.position)trkMap.setView(Trip.position,16,{animate:true});}
+function renderTripPosition(point,heading){
+ Trip.position=point;
+ if(trkCarMarker){trkCarMarker.setLatLng(point);const el=trkCarMarker.getElement();if(el)el.querySelector('.trip-car').style.transform=`rotate(${heading||0}deg)`;}
+ if(Trip.follow&&trkMap&&!trkMap.getBounds().pad(-.25).contains(point))trkMap.panTo(point,{animate:false});
+}
+function updateTripMetrics(meters){
+ if(!Trip.route)return;
+ const remaining=Math.max(0,Trip.route.length-meters),ratio=Math.min(1,meters/Trip.route.length);
+ document.getElementById('trk-eta').textContent=remaining<20?'0':Math.max(1,Math.ceil(Trip.route.duration*(1-ratio)/60));
+ document.getElementById('trip-distance').textContent=remaining<1000?Math.round(remaining)+' m':(remaining/1000).toFixed(1)+' km';
+ document.getElementById('trip-progress-fill').style.width=(ratio*100)+'%';
+}
+function stopTrip(){
+ Trip.active=false;Trip.id++;Trip.request++;cancelAnimationFrame(Trip.raf);cancelAnimationFrame(Trip.liveRaf);
+ if(Trip.controller)Trip.controller.abort();
+ Trip.timers.forEach(clearTimeout);Trip.timers=[];Trip.route=null;Trip.lastGPS=0;
+ if(trkMap){trkMap.remove();trkMap=null;}trkCarMarker=null;trkLine=null;trkUserMarker=null;
+}
+function resetTrip(){
+ stopTrip();Trip.active=true;Trip.mode='demo';Trip.phase='searching';Trip.position=[43.8512,18.4080];Trip.follow=false;
+ document.getElementById('trip-source').textContent=tripText('DEMO · Simulacija','DEMO · Simulated car','DEMO · Simulim');
+ document.getElementById('trip-speed').textContent='20×';
+ document.getElementById('trip-dest-name').textContent=S._destName;
+ document.getElementById('trip-dest-label').textContent=tripText('ODREDIŠTE','DESTINATION','DESTINACIONI');
+ document.getElementById('trip-start').hidden=true;
+ document.getElementById('trip-distance').textContent='—';
+ document.getElementById('trip-progress-fill').style.width='0%';
+ tripNotice(tripText('Simulacija vožnje — nije GPS uživo.','Trip demo — not live GPS.','Demo udhëtimi — jo GPS live.'));
+ const btn=document.getElementById('trk-cancel-btn');btn.onclick=cancelRide;btn.removeAttribute('style');
+ document.getElementById('trk-cancel-lbl').textContent=T('trk-cancel-lbl');
+ document.getElementById('trk-dot').style.background='';
+}
+function tripLater(fn,delay){const id=Trip.id;Trip.timers.push(setTimeout(()=>{if(Trip.active&&Trip.id===id)fn();},delay));}
+function initTrkMap(){
+ if(!Trip.active)return;if(trkMap){forceTrkMapSize();return;}
+ if(typeof L==='undefined'){tripNotice(tripText('Mapa se nije učitala. Provjerite internet i osvježite.','Map could not load. Check your connection and refresh.','Harta nuk u ngarkua. Kontrolloni internetin.'));return;}
+ trkMap=L.map('trk-leaflet',{zoomControl:false}).setView(Trip.position,14);
+ let tileErrors=0;
+ L.tileLayer(getTiles(),{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'})
+ .on('tileerror',()=>{if(++tileErrors===3)tripNotice(tripText('Ulična mapa nije dostupna. Provjerite internet.','Street tiles unavailable. Check your connection.','Harta e rrugëve nuk është e disponueshme.'));}).addTo(trkMap);
+ applyMapTheme(trkMap);
+ trkMap.on('dragstart',()=>Trip.follow=false);
+ trkUserMarker=L.marker([USER_LAT,USER_LNG],{icon:makeUserIcon()}).addTo(trkMap).bindTooltip(tripText('Mjesto preuzimanja','Pickup','Pika e marrjes'));
+ L.marker(S._destCoords,{icon:L.divIcon({className:'',html:'<div style="background:#182232;color:white;border:3px solid white;border-radius:50%;width:30px;height:30px;text-align:center;line-height:24px">⚑</div>',iconSize:[30,30],iconAnchor:[15,15]})}).addTo(trkMap).bindTooltip(S._destName);
+ trkCarMarker=L.marker(Trip.position,{icon:tripCarIcon(),zIndexOffset:1000}).addTo(trkMap);
+ forceTrkMapSize();
+}
+async function startTripLeg(phase){
+ if(!Trip.active||!trkMap)return;
+ if(phase==='destination'&&Trip.phase!=='pickup-arrived')return;
+ cancelAnimationFrame(Trip.raf);Trip.phase=phase;Trip.route=null;
+ document.getElementById('trip-start').hidden=true;
+ const target=phase==='pickup'?[USER_LAT,USER_LNG]:S._destCoords;
+ const request=++Trip.request,id=Trip.id;
+ if(Trip.controller)Trip.controller.abort();Trip.controller=new AbortController();
+ const ctrl=Trip.controller,timeout=setTimeout(()=>ctrl.abort(),12000);
+ document.getElementById('trk-status-lbl').textContent=tripText('Učitavanje rute…','Loading street route…','Duke ngarkuar rrugën…');
+ try{
+  const start=Trip.position,url=`https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${target[1]},${target[0]}?overview=full&geometries=geojson`;
+  const response=await fetch(url,{signal:ctrl.signal});if(!response.ok)throw Error('Routing unavailable');
+  const data=await response.json();if(data.code!=='Ok'||!data.routes?.length)throw Error('No route');
+  if(!Trip.active||Trip.id!==id||Trip.request!==request)return;
+  Trip.route=buildTripRoute(data.routes[0]);Trip.elapsed=0;Trip.travelled=0;Trip.lastFrame=0;
+  if(trkLine)trkMap.removeLayer(trkLine);
+  trkLine=L.polyline(Trip.route.points,{color:'#1A56F0',weight:6,opacity:.85,lineCap:'round'}).addTo(trkMap);
+  fitTripRoute();updateTripMetrics(0);
+  document.getElementById('trk-status-lbl').textContent=phase==='pickup'?tripText('Vozač dolazi','Driver approaching pickup','Shoferi po vjen'):tripText('Vožnja u toku','On the way to destination','Drejt destinacionit');
+  document.getElementById('trk-status-sub').textContent=phase==='pickup'?tripText('Pratite automobil na ulicama','Follow the car through the streets','Ndiqni makinën në rrugë'):S._destName;
+  tripNotice(Trip.mode==='demo'?tripText('Simulacija 20× · ruta po stvarnim ulicama','20× demo · route follows real streets','Demo 20× · rrugë reale'):tripText('Čekamo GPS vozača…','Waiting for driver GPS…','Duke pritur GPS…'));
+  if(Trip.mode==='demo')Trip.raf=requestAnimationFrame(animateTrip);
+ }catch(err){
+  if(!Trip.active||Trip.id!==id||Trip.request!==request)return;
+  Trip.phase=phase==='destination'?'pickup-arrived':'route-error';
+  document.getElementById('trk-status-lbl').textContent=tripText('Ruta nije dostupna','Route unavailable','Rruga nuk është e disponueshme');
+  tripNotice(tripText('Provjerite internet i pokušajte ponovo.','Check your connection and retry.','Kontrolloni internetin dhe provoni përsëri.'));
+  const btn=document.getElementById('trip-start');btn.hidden=false;btn.textContent=tripText('Pokušaj ponovo','Retry route','Provo përsëri');btn.onclick=()=>startTripLeg(phase);
+ }finally{clearTimeout(timeout);}
+}
+function animateTrip(now){
+ if(!Trip.active||Trip.mode!=='demo'||!Trip.route)return;
+ if(Trip.lastFrame)Trip.elapsed+=Math.min((now-Trip.lastFrame)/1000,.25)*20;Trip.lastFrame=now;
+ const ratio=Math.min(1,Trip.elapsed/Trip.route.duration),meters=Trip.route.length*ratio,pos=routePosition(Trip.route,meters);
+ Trip.travelled=meters;renderTripPosition(pos.point,pos.heading);updateTripMetrics(meters);
+ trkLine.setLatLngs([pos.point,...Trip.route.points.slice(pos.index)]);
+ if(ratio>=1){arriveTrip();return;}Trip.raf=requestAnimationFrame(animateTrip);
+}
+function arriveTrip(){
+ cancelAnimationFrame(Trip.raf);updateTripMetrics(Trip.route?Trip.route.length:0);
+ const pickup=Trip.phase==='pickup';Trip.phase=pickup?'pickup-arrived':'destination-arrived';
+ document.getElementById('trk-status-lbl').textContent=pickup?tripText('Vozač je stigao','Driver arrived at pickup','Shoferi mbërriti'):tripText('Stigli ste na odredište','Destination reached','Mbërritët në destinacion');
+ document.getElementById('trk-status-sub').textContent=pickup?tripText('Provjerite sigurnosni kôd prije ulaska','Verify the safety code before boarding','Verifikoni kodin para se të hipni'):S._destName;
+ const btn=document.getElementById('trip-start');btn.hidden=Trip.mode!=='demo'||!pickup;
+ btn.textContent=tripText('Ukrcani smo · Pokreni vožnju','On board · Start trip','Në bord · Nis udhëtimin');btn.onclick=()=>startTripLeg('destination');
+ if(!pickup){S._arrived=true;document.getElementById('safety-code-badge').hidden=true;document.getElementById('trk-cancel-lbl').textContent=T('trk-end-ride');document.getElementById('trk-cancel-btn').onclick=endRide;showToast(tripText('🏁 Stigli ste!','🏁 You have arrived!','🏁 Mbërritët!'));}
+}
+/* Backend integration: validated, trip-scoped, ordered GPS updates. */
+window.VoziTracking={
+ getTripId:()=>Trip.active?String(Trip.id):null,
+ useLive(tripId){if(!Trip.active||String(tripId)!==String(Trip.id))return false;cancelAnimationFrame(Trip.raf);Trip.mode='live';Trip.lastGPS=0;Trip.follow=true;document.getElementById('trip-source').textContent='GPS';document.getElementById('trip-speed').textContent='—';document.getElementById('trip-start').hidden=true;tripNotice('Waiting for driver GPS…');return true;},
+ updateLocation({tripId,lat,lng,timestamp,heading=0,accuracy=0}){
+  if(!Trip.active||Trip.mode!=='live'||String(tripId)!==String(Trip.id)||![lat,lng,timestamp,heading,accuracy].every(Number.isFinite)||Math.abs(lat)>90||Math.abs(lng)>180||accuracy<0||accuracy>100||timestamp<=Trip.lastGPS||timestamp<Date.now()-30000||timestamp>Date.now()+5000)return false;
+  Trip.lastGPS=timestamp;
+  cancelAnimationFrame(Trip.liveRaf);
+  const from=Trip.position||[lat,lng],started=performance.now(),id=Trip.id;
+  function interpolate(now){if(!Trip.active||Trip.id!==id||Trip.mode!=='live')return;
+   const f=Math.min(1,(now-started)/800);renderTripPosition([from[0]+(lat-from[0])*f,from[1]+(lng-from[1])*f],heading);
+   if(f<1)Trip.liveRaf=requestAnimationFrame(interpolate);
+  }Trip.liveRaf=requestAnimationFrame(interpolate);document.getElementById('trip-speed').textContent=new Date(timestamp).toLocaleTimeString();tripNotice(tripText('GPS vozača · procijenjena ruta','Driver GPS · estimated route','GPS shoferi · rrugë e përafërt'));
+  if(Trip.route){let nearest=0,best=Infinity;Trip.route.points.forEach((p,i)=>{const d=distanceMeters([lat,lng],p);if(d<best){best=d;nearest=i;}});if(best<100)updateTripMetrics(Trip.route.cumulative[nearest]);}
+  return true;
+ },
+ setPhase({tripId,phase}){if(!Trip.active||Trip.mode!=='live'||String(tripId)!==String(Trip.id))return false;
+  if(phase==='pickup-arrived'&&Trip.phase==='pickup'){arriveTrip();return true;}
+  if(phase==='destination'&&Trip.phase==='pickup-arrived'){startTripLeg('destination');return true;}
+  if(phase==='destination-arrived'&&Trip.phase==='destination'){arriveTrip();return true;}return false;}
+};
+setInterval(()=>{if(Trip.active&&Trip.mode==='live'&&(!Trip.lastGPS||Date.now()-Trip.lastGPS>15000))tripNotice(tripText('GPS nije ažuriran · čeka se signal','GPS stale · waiting for driver signal','GPS i vjetruar · duke pritur sinjalin'));},5000);
+
+/* ─── RIDER / BOOKING ─── */
+function showDrawer(){/* already visible */}
+function pickDest(name,basePrice,mins,km,lat,lng){
+  if(!S.authenticated)return;
+  const cur=S.currency;
+  const adj=basePrice;
+  S._bookingQuote=null;
+  const prices={x:adj,comfort:(adj*1.5),xl:(adj*1.8)};
+  S._destName=name;S._destMins=mins;S._destKm=km;S._prices=prices;S._destCur=cur;
+  const index=DEST_LIST.findIndex(d=>d.name===name);
+  S._destCoords=Number.isFinite(lat)&&Number.isFinite(lng)?[lat,lng]:index>=0?TRIP_DESTINATIONS[index]:null;
+  if(!S._destCoords){showToast('Select a destination from the list');return;}
+  document.getElementById('dest-ph').textContent=name;
+  document.getElementById('dest-ph').classList.remove('ph');
+  document.getElementById('rt-to-txt').textContent=name;
+  renderMoney();
+  closeSearchOverlay();
+  goTo('s-ridetype');
+  // Re-init rt map
+  if(rtMap){rtMap.remove();rtMap=null;}
+  setTimeout(initRtMap,100);
+}
+function selRideType(t){
+  S.rideType=t;
+  ['x','comfort','xl'].forEach(id=>{
+    document.getElementById('rtc-'+id).classList.toggle('sel',id===t);
+  });
+  renderMoney();
+}
+function confirmRide(){
+  if(!S.authenticated)return;
+  const quote=convertedMoney(S._prices?.[S.rideType]??8.5);
+  if(quote===null){showToast(tripText('Kurs USD trenutno nije dostupan','USD exchange rate unavailable','Kursi USD nuk është i disponueshëm'));return;}
+  S._bookingQuote={amount:quote,currency:S.currency,baseBam:S._prices?.[S.rideType]??8.5};
+  if(!S._destCoords){showToast('Select a destination first');return;}
+  resetTrip();
+  // Pick a random driver
+  const drv=DRIVERS[Math.floor(Math.random()*DRIVERS.length)];
+  S._currentDriver=drv;
+  // Generate safety code
+  S.safetyCode=Math.floor(1000+Math.random()*9000).toString();
+  goTo('s-tracking');
+  document.getElementById('trk-driver-card').hidden=true;
+  document.getElementById('trk-actions').hidden=true;
+  document.getElementById('trk-chg-dest-btn').hidden=true;
+  const badge=document.getElementById('safety-code-badge');
+  if(badge)badge.hidden=true;
+  document.getElementById('trk-spinner-wrap').hidden=false;
+  document.getElementById('trk-dot').classList.remove('found');
+  document.getElementById('trk-search-lbl').textContent=T('trk-search-lbl');
+  document.getElementById('trk-status-lbl').textContent=T('trk-status-lbl-wait');
+  document.getElementById('trk-status-sub').textContent=T('trk-status-sub-wait');
+  const chat=document.getElementById('msg-chat');
+  if(chat){chat.innerHTML='<div class="msg-bubble driver" id="msg-first-bubble">Dolazim uskoro! 👋</div>';}
+  S._arrived=false;
+  tripLater(initTrkMap,420);
+  tripLater(()=>{
+    document.getElementById('trk-spinner-wrap').hidden=true;
+    document.getElementById('trk-driver-card').hidden=false;
+    document.getElementById('trk-actions').hidden=false;
+    document.getElementById('trk-chg-dest-btn').hidden=false;
+    document.getElementById('trk-dot').classList.add('found');
+    document.getElementById('trk-status-lbl').textContent=T('trk-status-lbl-found');
+    document.getElementById('trk-status-sub').textContent=T('trk-status-sub-found');
+    // Show driver details
+    const avEl=document.getElementById('trk-drv-av');
+    avEl.textContent=drv.initials||drv.emoji;
+    avEl.style.background=drv.color||'var(--primary)';
+    avEl.style.color='#fff';
+    avEl.style.fontSize='16px';
+    avEl.style.fontWeight='800';
+    avEl.style.fontFamily='Outfit,sans-serif';
+    document.getElementById('trk-drv-name').textContent=drv.name+(drv.verified?' ✓':'');
+    document.getElementById('trk-drv-car').textContent='🚗 '+drv.car+' · ⭐ '+drv.stars+' ('+drv.trips+' vožnji)';
+    document.getElementById('trk-drv-bio').textContent=drv.bio;
+    // Show safety code
+    if(badge){
+      document.getElementById('safety-code-num').textContent=S.safetyCode;
+      badge.hidden=false;
+    }
+    showToast(T('t-booked'));
+    startTripLeg('pickup');
+  },2500);
+}
+function cancelRide(){
+  closeMsgSheet();
+  stopTrip();
+  showToast(T('t-cancelled'));
+  goTo('s-rider');
+}
+
+/* ─── PASSENGER COUNT ─── */
+function changePax(delta){
+  S.passengers=Math.max(1,Math.min(6,S.passengers+delta));
+  document.getElementById('pax-val').textContent=S.passengers;
+  // Update XL availability label
+  const xlDesc=document.getElementById('rtd-xl');
+  if(xlDesc)xlDesc.textContent=(S.lang==='en'?'Van · up to 6 passengers':'Kombi · do 6 osoba');
+}
+
+/* ─── SEARCH / DESTINATION ─── */
+function openSearchOverlay(){
+  const ov=document.getElementById('search-overlay');
+  if(!ov)return;
+  ov.classList.add('open');
+  const sh=ov.querySelector('.region-sheet');
+  if(sh)sh.classList.add('open');
+  const inp=document.getElementById('search-inp');
+  if(inp){inp.value='';inp.focus();}
+  filterDests('');
+}
+function closeSearchOverlay(){
+  const ov=document.getElementById('search-overlay');
+  if(!ov)return;
+  const sh=ov.querySelector('.region-sheet');
+  if(sh)sh.classList.remove('open');
+  ov.classList.remove('open');
+}
+function filterDests(q){
+  const list=document.getElementById('search-results');
+  if(!list)return;
+  const term=q.toLowerCase().trim();
+  const filtered=term?DEST_LIST.filter(d=>d.name.toLowerCase().includes(term)||d.addr.toLowerCase().includes(term)):DEST_LIST;
+  list.innerHTML=filtered.map(d=>`
+    <div onclick="pickDest('${d.name}',${d.price},${d.mins},${d.km})" style="display:flex;align-items:center;gap:14px;padding:14px 20px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .12s;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background=''">
+      <span style="font-size:22px;">${d.icon}</span>
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:700;color:var(--text);">${d.name}</div>
+        <div style="font-size:12px;color:var(--text-2);">${d.addr}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:13px;font-weight:800;color:var(--primary);">${money(d.price)}</div>
+        <div style="font-size:11px;color:var(--muted);">${d.km} km</div>
+      </div>
+    </div>`).join('');
+}
+
+/* ─── SCHEDULE ─── */
+function openSchedSheet(){
+  const ov=document.getElementById('sched-overlay');
+  if(!ov)return;
+  ov.classList.add('open');
+  const dt=document.getElementById('sched-datetime');
+  if(dt){
+    const now=new Date();now.setHours(now.getHours()+1,0,0,0);
+    dt.value=now.toISOString().slice(0,16);
+  }
+  const ds=document.getElementById('sched-dest-show');
+  if(ds)ds.textContent=S._destName||(S.lang==='en'?'Not selected yet':'Nije odabrano');
+}
+function closeSchedSheet(){
+  const ov=document.getElementById('sched-overlay');
+  if(ov)ov.classList.remove('open');
+}
+function confirmSchedule(){
+  const dt=document.getElementById('sched-datetime');
+  if(!dt||!dt.value){showToast('Odaberite datum i vrijeme');return;}
+  S.scheduledAt=dt.value;
+  const d=new Date(dt.value);
+  const fmt=d.toLocaleString('bs',{weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  closeSchedSheet();
+  showToast(`📅 Vožnja zakazana: ${fmt}`,4000);
+}
+
+/* ─── REGION ─── */
+function openRegionSheet(){
+  const ov=document.getElementById('region-overlay');
+  if(!ov)return;
+  ov.classList.add('open');
+  const sh=ov.querySelector('.region-sheet');
+  if(sh)sh.classList.add('open');
+  const cards=document.getElementById('region-cards');
+  if(cards){
+    cards.innerHTML=REGIONS.map(r=>`
+      <div class="region-card${r.code===S.region?' sel':''}" onclick="pickRegion('${r.code}')">
+        <span style="font-size:26px;">${r.flag}</span>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;color:var(--text);">${r.name}</div>
+          <div style="font-size:11px;color:var(--text-2);">${r.sub}</div>
+        </div>
+        ${r.code===S.region?'<span style="color:var(--primary);font-weight:800;">✓</span>':''}
+      </div>`).join('');
+  }
+}
+function closeRegionSheet(){
+  const ov=document.getElementById('region-overlay');
+  if(!ov)return;
+  const sh=ov.querySelector('.region-sheet');
+  if(sh)sh.classList.remove('open');
+  ov.classList.remove('open');
+}
+function pickRegion(code){
+  S.region=code;
+  const r=REGIONS.find(x=>x.code===code);
+  if(r){
+    document.getElementById('region-flag').textContent=r.flag;
+    document.getElementById('region-code-lbl').textContent=code.toUpperCase();
+    // Update map view
+    const center=REGION_CENTER[code];
+    if(mainMap&&center){mainMap.setView(center,code==='ba'?14:6,{animate:true});}
+  }
+  closeRegionSheet();
+  showToast(`${r?r.flag:''} Regija promijenjena: ${r?r.name:code}`,3000);
+}
+
+/* ─── POINTS / SUBSCRIPTION ─── */
+function updatePointsDisplay(){
+  const pv=document.getElementById('ppc-val');if(pv)pv.textContent=S.points;
+  const bar=document.getElementById('ppc-bar-fill');if(bar)bar.style.width=S.points+'%';
+  const next=document.getElementById('ppc-next');if(next)next.textContent=`Još ${100-S.points} poena do sljedeće besplatne vožnje`;
+  const badge=document.getElementById('ppc-free');if(badge)badge.textContent=S.freeRides+' gratis';
+}
+
+/* ─── RIDE HISTORY ─── */
+function refreshRideHistory(){
+  const list=document.getElementById('rh-list');
+  const empty=document.getElementById('rh-empty');
+  if(!list)return;
+  if(S.rideHistory.length===0){list.innerHTML='<div id="rh-empty" style="color:var(--text-2);font-size:12px;text-align:center;padding:20px">'+tripText('Nema dovršenih vožnji','No completed trips','Nuk ka udhëtime të përfunduara')+'</div>';return;}
+  if(empty)empty.hidden=true;
+  list.innerHTML=S.rideHistory.map(r=>`
+    <div class="rh-item">
+      <div class="rh-icon">🏁</div>
+      <div style="flex:1;">
+        <div class="rh-dest">${r.dest}</div>
+        <div class="rh-meta">${r.driver} · ${r.pax} putnik · ${r.date}</div>
+      </div>
+      <div class="rh-price">${r.price}</div>
+    </div>`).join('');
+}
+
+/* ─── DRIVER ARRIVAL ─── */
+function endRide(){
+  if(Trip.phase!=='destination-arrived')return;
+  stopTrip();
+  // Record ride to history
+  const drv=S._currentDriver||DRIVERS[0];
+  const quote=S._bookingQuote||{amount:convertedMoney(S._prices?.[S.rideType]??8.5),currency:S.currency};
+  const entry={
+    dest:S._destName||'Nepoznato',
+    driver:drv.name,
+    price:formatAmount(quote.amount,quote.currency),currency:quote.currency,amount:quote.amount,
+    pax:S.passengers,
+    date:new Date().toLocaleString('bs',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}),
+  };
+  S.rideHistory.unshift(entry);
+  // Award 5 points per ride
+  S.points=Math.min(100,S.points+5);
+  if(S.points>=100){S.points=0;S.freeRides++;showToast('🎉 Besplatna vožnja otključana!',4000);}
+  if(S.freeRides>0){S.freeRides--;}
+  updatePointsDisplay();
+  refreshRideHistory();
+  goTo('s-rider');
+  showToast('✅ Vožnja završena! +5 poena',3500);
+  // Close and reset trk map
+  if(trkMap){trkMap.remove();trkMap=null;trkCarMarker=null;trkUserMarker=null;trkLine=null;}
+}
+
+/* ─── DRIVER MESSAGING ─── */
+function openMsgSheet(){
+  document.getElementById('msg-overlay').classList.add('open');
+  document.getElementById('msg-sheet').classList.add('open');
+  setTimeout(()=>{const inp=document.getElementById('msg-inp');if(inp)inp.focus();},350);
+}
+function closeMsgSheet(){
+  document.getElementById('msg-overlay').classList.remove('open');
+  document.getElementById('msg-sheet').classList.remove('open');
+}
+function sendMsg(){
+  const inp=document.getElementById('msg-inp');
+  const txt=(inp.value||'').trim();
+  if(!txt)return;
+  addMsgBubble(txt,'rider');
+  inp.value='';
+  // Driver auto-reply after 1.2s
+  tripLater(()=>{
+    const replies=['👍 Dobro!','Razumijem, odmah sam tu.','U redu, čekam!','Uskoro sam! 🚗'];
+    addMsgBubble(replies[Math.floor(Math.random()*replies.length)],'driver');
+  },1200);
+}
+function quickMsg(txt){
+  addMsgBubble(txt,'rider');
+  tripLater(()=>{
+    const replies=['👍','Uredu!','U redu, na putu sam!','Razumijem.'];
+    addMsgBubble(replies[Math.floor(Math.random()*replies.length)],'driver');
+  },900);
+}
+function addMsgBubble(txt,side){
+  const chat=document.getElementById('msg-chat');
+  const b=document.createElement('div');
+  b.className='msg-bubble '+side;b.textContent=txt;
+  chat.appendChild(b);chat.scrollTop=chat.scrollHeight;
+}
+function callDriver(){showToast(T('t-calling'));}
+function updatePayDisplay(){
+  const icons={cash:'💵',card:'💳',wallet:'📱'};
+  const names={cash:T('po-cash-name'),card:T('po-card-name'),wallet:T('po-wallet-name')};
+  document.getElementById('pm-ic').textContent=icons[S.payMethod];
+  document.getElementById('pm-name').textContent=names[S.payMethod];
+}
+
+/* ─── DRIVER ─── */
+let reqTimer,countTimer;
+function toggleOnline(){
+  if(!S.authenticated)return;
+  S.online=!S.online;
+  document.getElementById('tog').classList.toggle('on',S.online);
+  const sv=document.getElementById('st-val');
+  sv.textContent=S.online?(S.lang==='en'?'Available ✓':S.lang==='sq'?'Disponibël ✓':'Dostupan ✓'):(S.lang==='en'?'Offline':S.lang==='sq'?'Offline':'Van mreže');
+  sv.className='oc-val'+(S.online?' go':'');
+  document.getElementById('off-hint').style.display=S.online?'none':'block';
+  if(S.online){
+    showToast(T('t-online'));
+    clearTimeout(reqTimer);
+    reqTimer=setTimeout(()=>{
+      const w=document.getElementById('req-wrap');
+      w.style.display='block';
+      w.querySelector('.req-card').classList.add('slide-up');
+      startReqTimer();
+    },2400);
+  } else {
+    clearTimeout(reqTimer);clearInterval(countTimer);
+    document.getElementById('req-wrap').style.display='none';
+    showToast(T('t-offline'));
+  }
+}
+let reqCount=15;
+function startReqTimer(){
+  reqCount=15;
+  clearInterval(countTimer);
+  countTimer=setInterval(()=>{
+    reqCount--;
+    const el=document.getElementById('req-timer');
+    if(el)el.textContent=reqCount;
+    if(reqCount<=0){clearInterval(countTimer);decRide();}
+  },1000);
+}
+function decRide(){
+  clearInterval(countTimer);
+  const w=document.getElementById('req-wrap');
+  w.style.cssText+=';transition:opacity .25s,transform .25s;opacity:0;transform:translateX(-30px)';
+  setTimeout(()=>{w.style.display='none';w.style.opacity='';w.style.transform='';},270);
+  showToast(T('t-declined'));
+}
+function accRide(){
+  clearInterval(countTimer);
+  document.getElementById('req-wrap').style.display='none';
+  showToast(T('t-accepted'));
+}
+
+/* ─── PROFILE ─── */
+const PROFILES={
+  rider:{initials:'EH',bg:'#1A56F0',name:'Emir Hadžić',role_bs:'🧍 Putnik',role_en:'🧍 Rider',trips:'47',stars:'4.8 ⭐',year:'2024',phone:'+387 61 234 567',email:'emir@primjer.ba'},
+  driver:{initials:'AK',bg:'#6B3FA0',name:'Amila Kovačević',role_bs:'🚗 Vozač',role_en:'🚗 Driver',trips:'312',stars:'4.9 ⭐',year:'2023',phone:'+387 62 891 045',email:'amila@primjer.ba'},
+};
+function openProfile(type){
+  if(!S.authenticated)return;
+  const p=PROFILES[type];
+  document.getElementById('prof-av-big').textContent=p.initials;
+  document.getElementById('prof-av-big').style.background=p.bg;
+  document.getElementById('prof-name').textContent=p.name;
+  document.getElementById('prof-role-badge').textContent=S.lang==='en'?p.role_en:p.role_bs;
+  document.getElementById('ps-trips').textContent=p.trips;
+  document.getElementById('ps-stars').textContent=p.stars;
+  document.getElementById('ps-year').textContent=p.year;
+  document.getElementById('pr-phone-v').textContent=p.phone;
+  document.getElementById('pr-email-v').textContent=p.email;
+  updatePointsDisplay();
+  refreshRideHistory();
+  document.getElementById('prof-overlay').classList.add('open');
+  document.getElementById('prof-sheet').classList.add('open');
+}
+function closeProfile(){
+  document.getElementById('prof-overlay').classList.remove('open');
+  document.getElementById('prof-sheet').classList.remove('open');
+}
+function logout(){
+  authEpoch++;clearTimeout(otpTimer);clearTimeout(reqTimer);clearInterval(countTimer);
+  stopTrip();S.authenticated=false;S.online=false;S._pendingRole=null;S._currentDriver=null;
+  S._bookingQuote=null;S._prices=null;S._destName=null;S._destCoords=null;S.safetyCode=null;
+  S._arrived=false;S.scheduledAt=null;S.passengers=1;S.payMethod='cash';S.rideType='x';
+  S.rideHistory=[];S.points=23;S.freeRides=3;S.tos=false;
+  document.querySelectorAll('.open').forEach(el=>el.classList.remove('open'));
+  document.querySelectorAll('#s-auth input,#s-2fa input').forEach(el=>{el.value='';if(el.type==='text'&&el.id.includes('pw'))el.type='password';});
+  document.querySelectorAll('.pw-eye').forEach(el=>el.textContent='👁');
+  document.getElementById('tos-check').classList.remove('on');
+  document.getElementById('req-wrap').style.display='none';
+  document.getElementById('tog').classList.remove('on');
+  document.getElementById('st-val').textContent=tripText('Van mreže','Offline','Offline');
+  document.getElementById('st-val').className='oc-val';document.getElementById('off-hint').style.display='block';
+  document.getElementById('pax-val').textContent='1';document.getElementById('dest-ph').textContent=T('dest-ph');document.getElementById('dest-ph').classList.add('ph');
+  document.getElementById('msg-chat').replaceChildren();document.getElementById('msg-inp').value='';
+  for(const id of ['trk-driver-card','trk-actions','safety-code-badge','trip-start'])document.getElementById(id).hidden=true;
+  refreshRideHistory();updatePointsDisplay();pickRole('rider');pickRegRole('rider');authTab('in');updatePayDisplay();selRideType('x');
+  for(const m of ['cash','card','wallet'])document.getElementById('po-'+m).classList.toggle('sel',m==='cash');
+  // Direct reset avoids delayed transitions or OTP callbacks reopening the app.
+  document.querySelectorAll('.screen').forEach(el=>{el.classList.remove('active','out-left');el.classList.add('out-right');});
+  const auth=document.getElementById('s-auth');auth.classList.remove('out-right');auth.classList.add('active');
+  showToast(tripText('Uspješno ste odjavljeni','You are logged out','Jeni çkyçur'));
+  document.getElementById('inp-email-in').focus({preventScroll:true});
+}
+
+/* ─── PAYMENT SHEET ─── */
+function openPaySheet(){
+  document.getElementById('pay-overlay').classList.add('open');
+  document.getElementById('pay-sheet').classList.add('open');
+}
+function closePaySheet(){
+  document.getElementById('pay-overlay').classList.remove('open');
+  document.getElementById('pay-sheet').classList.remove('open');
+}
+function pickPay(method){
+  S.payMethod=method;
+  ['cash','card','wallet'].forEach(m=>{
+    document.getElementById('po-'+m).classList.toggle('sel',m===method);
+  });
+  updatePayDisplay();
+  setTimeout(()=>{closePaySheet();showToast(T('t-pay-changed'));},260);
+}
+
+/* ─── MODALS ─── */
+const MODAL_CONTENT={
+  tos:{
+    bs:{title:'Uvjeti korištenja',body:`
+<h3>1. Prihvatanje uvjeta</h3>
+<p>Korištenjem platforme Vozi prihvaćate ove uvjete u potpunosti. Ako se ne slažete, molimo nemojte koristiti uslugu.</p>
+<h3>2. Usluga prijevoza</h3>
+<p>Vozi je platforma koja povezuje putnike i vozače. Vozi ne pruža direktne usluge prijevoza već olakšava kontakt između korisnika.</p>
+<h3>3. Sigurnost</h3>
+<p>Svi vozači prolaze provjeru identiteta i vozačke dozvole. Putnici su odgovorni za tačnost adresa koje unose.</p>
+<h3>4. Otkazivanje i povrat</h3>
+<p>Otkazivanje unutar 2 minute od potvrde vožnje je besplatno. Nakon toga primjenjuje se naknada od 1.50 KM.</p>
+<h3>5. Privatnost podataka</h3>
+<p>Vaši podaci se čuvaju prema GDPR standardima i zakonu BiH o zaštiti osobnih podataka.</p>
+<h3>6. Nadležnost</h3>
+<p>Ovi uvjeti se tumače prema zakonima Bosne i Hercegovine. Nadležan sud je u Sarajevu.</p>`},
+    en:{title:'Terms of Service',body:`
+<h3>1. Acceptance of Terms</h3>
+<p>By using the Vozi platform you accept these terms in full. If you disagree, please do not use the service.</p>
+<h3>2. Transport Service</h3>
+<p>Vozi is a platform connecting riders and drivers. Vozi does not provide direct transport services but facilitates contact between users.</p>
+<h3>3. Safety</h3>
+<p>All drivers undergo identity and driving licence verification. Passengers are responsible for the accuracy of addresses entered.</p>
+<h3>4. Cancellation & Refunds</h3>
+<p>Cancellation within 2 minutes of ride confirmation is free. After that, a 1.50 KM fee applies.</p>
+<h3>5. Data Privacy</h3>
+<p>Your data is stored in accordance with GDPR and BiH personal data protection law.</p>
+<h3>6. Jurisdiction</h3>
+<p>These terms are interpreted under the laws of Bosnia and Herzegovina. The competent court is in Sarajevo.</p>`}
+  },
+  policy:{
+    bs:{title:'Politika povrata sredstava',body:`
+<h3>Otkazivanje vožnje</h3>
+<p>Putnik može otkazati vožnju bez naknade unutar <strong>2 minute</strong> od potvrde. Nakon toga naplaćuje se <strong>1.50 KM</strong>.</p>
+<h3>Povrat na karticu</h3>
+<p>Povrat sredstava na bankovnu karticu procesira se u roku od <strong>3–5 radnih dana</strong>. Vozi Novčanik se puni odmah.</p>
+<h3>Sporovi oko naplate</h3>
+<p>Ukoliko smatrate da je vožnja pogrešno naplaćena, kontaktirajte podršku unutar 24 sata od završetka vožnje. Razmatramo sve slučajeve.</p>
+<h3>Greška vozača</h3>
+<p>Ako vozač nije stigao ili je vožnja prekinuta bez krivice putnika, puni povrat je garantovan automatski.</p>
+<h3>Kontakt podrška</h3>
+<p>E-mail: podrska@vozi.ba | Radno vrijeme: ponedjeljak–petak 08:00–20:00</p>`},
+    en:{title:'Refund Policy',body:`
+<h3>Ride Cancellation</h3>
+<p>A passenger may cancel without charge within <strong>2 minutes</strong> of confirmation. After that, a <strong>1.50 KM</strong> fee applies.</p>
+<h3>Card Refunds</h3>
+<p>Refunds to a bank card are processed within <strong>3–5 business days</strong>. Vozi Wallet is credited immediately.</p>
+<h3>Billing Disputes</h3>
+<p>If you believe a ride was incorrectly charged, contact support within 24 hours. We review every case.</p>
+<h3>Driver Error</h3>
+<p>If a driver did not arrive or a trip was cancelled through no fault of the passenger, a full refund is guaranteed automatically.</p>
+<h3>Contact Support</h3>
+<p>Email: support@vozi.ba | Hours: Monday–Friday 08:00–20:00</p>`}
+  }
+};
+function openModal(type){
+  const lang=S.lang;
+  const content=MODAL_CONTENT[type][lang]||MODAL_CONTENT[type].bs;
+  document.getElementById('modal-ttl').textContent=content.title;
+  document.getElementById('modal-body').innerHTML=content.body.replace(/(\d+(?:[.]\d+)?) KM/g,(_,amount)=>money(Number(amount)));
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');}
+
+/* ─── TOAST ─── */
+let _tt;
+function showToast(msg,dur){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),dur||3200);
+}
+
+
+/* Money is stored in BAM; display conversion never mutates a fare. */
+const BAM_PER_EUR=1.95583;
+const FX={usd:1.1165,date:"2026-11-06",source:'bundled'};
+function storageGet(key){try{return localStorage.getItem(key);}catch{return null;}}
+function storageSet(key,value){try{localStorage.setItem(key,value);}catch{}}
+function convertedMoney(bam,code=S.currency){
+  if(!Number.isFinite(bam))return null;
+  const rate=code==='BAM'?1:code==='EUR'?1/BAM_PER_EUR:code==='USD'&&Number.isFinite(FX.usd)&&FX.usd>0?FX.usd/BAM_PER_EUR:null;
+  return rate===null?null:Math.round((bam*rate+Number.EPSILON)*100)/100;
+}
+function formatAmount(amount,code=S.currency){
+ if(amount===null||!Number.isFinite(amount))return '— '+(code==='BAM'?'KM':code);
+ return amount.toFixed(2)+' '+(code==='BAM'?'KM':code==='USD'?'USD':'EUR');
+}
+function money(bam,code=S.currency){return formatAmount(convertedMoney(bam,code),code);}
+function setCurrency(code){if(!['BAM','USD','EUR'].includes(code))return;S.currency=code;storageSet('vozi.currency',code);renderMoney();}
+function currencyRateNote(){
+ if(S.currency==='BAM')return tripText('Cijene u konvertibilnim markama (BAM / KM).','Prices in Bosnian convertible marks (BAM / KM).','Çmimet në marka të konvertueshme (BAM / KM).');
+ if(S.currency==='EUR')return tripText('Procjena · 1 EUR = 1,95583 KM.','Estimated fares · 1 EUR = 1.95583 KM.','Çmime të përafërta · 1 EUR = 1.95583 KM.');
+ return tripText('Procijenjena cijena · referentni kurs: ','Estimated fares · reference rate: ','Çmime të përafërta · kursi: ')+FX.date+(FX.source==='bundled'?tripText(' · spremljeni kurs',' · saved rate',' · kurs i ruajtur'):'');
+}
+function renderMoney(){
+ document.querySelectorAll('[data-currency-select]').forEach(el=>el.value=S.currency);
+ document.querySelectorAll('[data-currency-label]').forEach(el=>el.textContent=tripText('Valuta','Currency','Monedha'));
+ document.querySelectorAll('[data-currency-note]').forEach(el=>el.textContent=currencyRateNote());
+ document.querySelectorAll('[data-bam]').forEach(el=>el.textContent=money(Number(el.dataset.bam)));
+ const wallet=document.getElementById('wallet-label');if(wallet)wallet.textContent=tripText('Stanje','Balance','Bilanci');
+ const prices=S._prices||{x:8.5,comfort:12.75,xl:15.3};
+ for(const [key,id,card] of [['x','rtp-x','rtc-x'],['comfort','rtp-c','rtc-comfort'],['xl','rtp-xl','rtc-xl']]){
+  document.getElementById(id).textContent=convertedMoney(prices[key])?.toFixed(2)??'—';
+  document.querySelector('#'+card+' .rt-price-unit').textContent=S.currency==='BAM'?'KM':S.currency;
+ }
+ const conf=document.getElementById('btn-conf-txt');conf.textContent=tripText('Naruči vožnju','Book ride','Rezervo udhëtim')+' · '+money(prices[S.rideType]);
+ const policy=document.getElementById('policy-body-txt');if(policy)policy.textContent=T('policy-body-txt').replace('1.50 KM',money(1.5));
+ document.getElementById('earn-goal').textContent=tripText('Cilj: ','Goal: ','Objektiv: ')+money(150)+' · '+tripText('58% ostvareno','58% achieved','58% e arritur');
+ if(document.getElementById('search-overlay').classList.contains('open'))filterDests(document.getElementById('search-inp').value);
+}
+async function refreshExchangeRate(){
+ const ctrl=new AbortController(),timeout=setTimeout(()=>ctrl.abort(),8000);
+ try{
+  const response=await fetch('https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD',{signal:ctrl.signal});if(!response.ok)throw Error('FX request failed');
+  const data=await response.json();
+  if(data.base!=='EUR'||!Number.isFinite(data.rates?.USD)||data.rates.USD<=0||!/^\d{4}-\d{2}-\d{2}$/.test(data.date)||data.date<FX.date)return;
+  FX.usd=data.rates.USD;FX.date=data.date;FX.source='reference';storageSet('vozi.fx',JSON.stringify({usd:FX.usd,date:FX.date}));renderMoney();
+ }catch{/* Keep the dated reference snapshot visible when offline. */}finally{clearTimeout(timeout);}
+}
+function initializeMoney(){
+ const code=storageGet('vozi.currency');if(['BAM','USD','EUR'].includes(code))S.currency=code;
+ try{const cache=JSON.parse(storageGet('vozi.fx'));if(Number.isFinite(cache?.usd)&&cache.usd>0&&/^\d{4}-\d{2}-\d{2}$/.test(cache.date)&&cache.date>=FX.date){FX.usd=cache.usd;FX.date=cache.date;}}catch{}
+ renderMoney();refreshExchangeRate();
+}
+
+/* ─── INIT ─── */
+setLang('bs');
+applyThemeIcons();
+selRideType('x');
+initializeMoney();
+window.addEventListener('resize',()=>{
+  forceMapSize();if(mainMap)mainMap.invalidateSize();
+  forceRtMapSize();if(rtMap)rtMap.invalidateSize();
+  forceTrkMapSize();
+});
+</script>
+
+</body></html>
